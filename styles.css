@@ -434,7 +434,7 @@ h1, h2, h3 {
 /* Responsive Design */
 @media (max-width: 768px) {
     .hero {
-        padding-bottom: 30px;
+        padding-bottom: 60px;
     }
 
     .hero-content {
@@ -500,7 +500,7 @@ h1, h2, h3 {
 
 @media (max-width: 480px) {
     .hero {
-        padding-bottom: 20px;
+        padding-bottom: 80px;
         min-height: 500px;
     }
 
