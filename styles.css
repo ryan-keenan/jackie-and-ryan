@@ -1,0 +1,573 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    line-height: 1.6;
+    color: #333;
+    background-color: #fafafa;
+}
+
+h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 400;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Hero Section */
+.hero {
+    position: relative;
+    height: 100vh;
+    min-height: 600px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 40px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+}
+
+.hero-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.85;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg,
+        rgba(255,255,255,0.1) 0%,
+        rgba(255,255,255,0.3) 50%,
+        rgba(255,255,255,0.1) 100%);
+    z-index: 2;
+}
+
+.hero-content {
+    position: relative;
+    text-align: center;
+    z-index: 3;
+    padding: 20px 35px;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 4px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+.couple-names {
+    font-size: 2.8rem;
+    margin-bottom: 8px;
+    color: #2c2c2c;
+    letter-spacing: 2px;
+    line-height: 1;
+}
+
+.wedding-date {
+    margin-top: 0;
+}
+
+.date-text {
+    font-size: 1.2rem;
+    color: #444;
+    margin-bottom: 2px;
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+.time-text {
+    font-size: 1rem;
+    color: #555;
+    font-weight: 300;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+.location-link {
+    text-decoration: none;
+    display: block;
+    transition: opacity 0.3s ease;
+}
+
+.location-link:hover {
+    opacity: 0.8;
+}
+
+.location-text {
+    font-size: 1rem;
+    color: #555;
+    font-weight: 300;
+    margin-top: 2px;
+    margin-bottom: 12px;
+    line-height: 1.2;
+    text-decoration: underline;
+}
+
+.hero-rsvp {
+    display: inline-block;
+    padding: 10px 28px;
+    background: rgba(212, 165, 116, 0.9);
+    color: white;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: 1.5px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+
+.hero-rsvp:hover {
+    background: rgba(184, 147, 95, 0.95);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Event Details Section */
+.event-details {
+    padding: 80px 0;
+    background: white;
+}
+
+.event-details h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 50px;
+    color: #2c2c2c;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    margin-bottom: 60px;
+}
+
+.detail-item {
+    text-align: center;
+    padding: 30px;
+    background: #fafafa;
+    border-radius: 4px;
+    transition: transform 0.3s ease;
+}
+
+.detail-item:hover {
+    transform: translateY(-5px);
+}
+
+.detail-item .icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 20px;
+    color: #d4a574;
+}
+
+.detail-item h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #2c2c2c;
+}
+
+.detail-item p {
+    font-size: 1.1rem;
+    color: #666;
+}
+
+/* RSVP Section */
+.rsvp-section {
+    text-align: center;
+    padding: 40px 0;
+}
+
+.rsvp-button {
+    display: inline-block;
+    padding: 18px 50px;
+    background: #d4a574;
+    color: white;
+    text-decoration: none;
+    font-size: 1.2rem;
+    font-weight: 400;
+    letter-spacing: 2px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.rsvp-button:hover {
+    background: #b8935f;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(212, 165, 116, 0.3);
+}
+
+.rsvp-note {
+    margin-top: 20px;
+    color: #888;
+    font-style: italic;
+}
+
+/* Gallery Section */
+.gallery {
+    padding: 80px 0;
+    background: #fafafa;
+}
+
+.gallery h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 50px;
+    color: #2c2c2c;
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.photo-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    background: white;
+}
+
+.photo-item:hover {
+    transform: scale(1.03);
+}
+
+.photo-item img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    transition: opacity 0.3s ease;
+    display: block;
+}
+
+.photo-item:hover img {
+    opacity: 0.95;
+}
+
+.photo-caption {
+    padding: 10px 15px;
+    text-align: center;
+    font-size: 0.95rem;
+    color: #666;
+    font-weight: 300;
+    line-height: 1.4;
+    background: white;
+    margin: 0;
+}
+
+/* Video Section */
+.videos {
+    padding: 80px 0;
+    background: white;
+}
+
+.videos h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 50px;
+    color: #2c2c2c;
+}
+
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(500px, 100%), 1fr));
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.video-item {
+    background: #f5f5f5;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+}
+
+.video-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.video-note {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+/* Vertical Video Styles */
+.video-grid-vertical {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.video-item-vertical {
+    max-width: 400px;
+    width: 100%;
+}
+
+.video-wrapper-vertical {
+    position: relative;
+    padding-bottom: 177.78%; /* 9:16 aspect ratio for vertical video */
+    height: 0;
+    overflow: hidden;
+    background: #000;
+}
+
+.video-wrapper-vertical iframe {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 177.78%; /* Scale up to crop horizontal parts */
+    height: 100%;
+}
+
+/* Responsive for vertical videos */
+@media (max-width: 480px) {
+    .video-item-vertical {
+        max-width: 90%;
+    }
+}
+
+/* Lightbox */
+.lightbox {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    padding-top: 60px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.95);
+}
+
+.lightbox-content {
+    margin: auto;
+    display: block;
+    max-width: 90%;
+    max-height: 90vh;
+    animation: zoom 0.3s;
+}
+
+@keyframes zoom {
+    from { transform: scale(0.8); }
+    to { transform: scale(1); }
+}
+
+.close-lightbox {
+    position: absolute;
+    top: 30px;
+    right: 45px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+    cursor: pointer;
+}
+
+.close-lightbox:hover,
+.close-lightbox:focus {
+    color: #bbb;
+}
+
+/* Footer */
+.footer {
+    padding: 60px 0;
+    background: #2c2c2c;
+    color: white;
+    text-align: center;
+}
+
+.footer p {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    font-weight: 300;
+}
+
+.footer-names {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    margin-top: 20px;
+    color: #d4a574;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero {
+        padding-bottom: 30px;
+    }
+
+    .hero-content {
+        padding: 18px 25px;
+        width: 90%;
+        max-width: 400px;
+    }
+
+    .couple-names {
+        font-size: 2.2rem;
+        margin-bottom: 6px;
+    }
+
+    .date-text {
+        font-size: 1.1rem;
+    }
+
+    .time-text {
+        font-size: 0.95rem;
+    }
+
+    .location-text {
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+    }
+
+    .hero-rsvp {
+        padding: 9px 25px;
+        font-size: 0.9rem;
+    }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .photo-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .video-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rsvp-button {
+        padding: 15px 40px;
+        font-size: 1rem;
+    }
+
+    .event-details h2,
+    .gallery h2,
+    .videos h2 {
+        font-size: 2rem;
+    }
+
+    .event-details,
+    .gallery,
+    .videos {
+        padding: 60px 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero {
+        padding-bottom: 20px;
+        min-height: 500px;
+    }
+
+    .hero-content {
+        padding: 15px 20px;
+        width: 92%;
+    }
+
+    .couple-names {
+        font-size: 1.9rem;
+        margin-bottom: 5px;
+        letter-spacing: 1px;
+    }
+
+    .date-text {
+        font-size: 1rem;
+        margin-bottom: 1px;
+    }
+
+    .time-text {
+        font-size: 0.9rem;
+        margin-bottom: 1px;
+    }
+
+    .location-text {
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+        line-height: 1.3;
+    }
+
+    .hero-rsvp {
+        padding: 8px 22px;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    .photo-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .detail-item {
+        padding: 20px;
+    }
+
+    .detail-item .icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 15px;
+    }
+
+    .event-details h2,
+    .gallery h2,
+    .videos h2 {
+        font-size: 1.7rem;
+        margin-bottom: 30px;
+    }
+
+    .footer {
+        padding: 40px 0;
+    }
+
+    .footer p {
+        font-size: 1rem;
+    }
+
+    .footer-names {
+        font-size: 1.3rem;
+    }
+}
