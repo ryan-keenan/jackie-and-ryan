@@ -1,5 +1,82 @@
+// Wedding countdown timer
+function updateCountdown() {
+    // Wedding date: December 21, 2025
+    const weddingDate = new Date(2025, 11, 21); // Month is 0-indexed: 11 = December
+    const today = new Date();
+
+    // Log to console to verify it's calculating
+    console.log('Today:', today.toDateString());
+    console.log('Wedding:', weddingDate.toDateString());
+
+    // Set both to midnight for clean day calculation
+    weddingDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    // Calculate difference in milliseconds
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysRemaining = Math.round((weddingDate - today) / msPerDay);
+
+    console.log('Days calculated:', daysRemaining);
+
+    // Update the display
+    const daysEl = document.getElementById('days');
+    if (daysEl) {
+        if (daysRemaining > 0) {
+            daysEl.textContent = daysRemaining;
+        } else if (daysRemaining === 0) {
+            daysEl.parentElement.textContent = "Today is the day!";
+        } else {
+            daysEl.parentElement.textContent = "Just married!";
+        }
+    }
+
+    // Test: Change the wedding date to tomorrow to see it update
+    // Uncomment the line below to test with tomorrow's date
+    // testWithDifferentDate();
+}
+
+// Test function to verify countdown is working
+function testWithDifferentDate() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const testEl = document.querySelector('.countdown-text');
+    if (testEl) {
+        testEl.innerHTML += '<br><small style="color: #999;">Test: 1 day if set to tomorrow</small>';
+    }
+}
+
+// Run countdown immediately and also when DOM loads
+updateCountdown(); // Run immediately
+
 // Lightbox functionality for photo gallery
 document.addEventListener('DOMContentLoaded', function() {
+    // Start the countdown again when DOM is ready
+    updateCountdown(); // Initial call
+    setInterval(updateCountdown, 60000); // Update every minute (days don't change that fast)
+
+    // Tab Navigation
+    const tabs = document.querySelectorAll('.nav-tab');
+    const panes = document.querySelectorAll('.tab-pane');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remove active class from all tabs and panes
+            tabs.forEach(t => t.classList.remove('active'));
+            panes.forEach(p => p.style.display = 'none');
+
+            // Add active class to clicked tab
+            this.classList.add('active');
+
+            // Show corresponding pane
+            const tabId = this.getAttribute('data-tab');
+            const pane = document.getElementById(tabId);
+            if (pane) {
+                pane.style.display = 'block';
+            }
+        });
+    });
+
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const closeBtn = document.querySelector('.close-lightbox');

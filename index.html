@@ -6,17 +6,38 @@
     <title>Jackie & Ryan - December 21st, 2025</title>
     <link rel="icon" type="image/png" href="images/awesome.png">
     <link rel="apple-touch-icon" href="images/awesome.png">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Mountain Icon -->
+        <div class="mountain-icon">
+            <svg width="120" height="80" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+                <!-- Mountains -->
+                <path d="M30 60 L50 30 L70 60 Z" fill="none" stroke="#8B7B6B" stroke-width="1.5"/>
+                <path d="M50 60 L70 35 L90 60 Z" fill="none" stroke="#8B7B6B" stroke-width="1.5"/>
+                <!-- Stars/dots -->
+                <circle cx="35" cy="15" r="1.5" fill="#8B7B6B" opacity="0.6"/>
+                <circle cx="60" cy="10" r="1.5" fill="#8B7B6B" opacity="0.6"/>
+                <circle cx="85" cy="18" r="1.5" fill="#8B7B6B" opacity="0.6"/>
+                <circle cx="45" cy="20" r="1" fill="#8B7B6B" opacity="0.4"/>
+                <circle cx="75" cy="12" r="1" fill="#8B7B6B" opacity="0.4"/>
+                <circle cx="55" cy="25" r="1" fill="#8B7B6B" opacity="0.4"/>
+            </svg>
+        </div>
+
+        <!-- Header Info -->
+        <div class="header-section">
             <h1 class="couple-names">Jackie & Ryan</h1>
+            <div class="countdown-container">
+                <span class="countdown-text">
+                    <span id="days">0</span> days to go!
+                </span>
+            </div>
             <div class="wedding-date">
                 <p class="date-text">Sunday, December 21st</p>
                 <p class="time-text">11:30 AM - 2:30 PM</p>
@@ -24,45 +45,56 @@
                     <p class="location-text">Tamarine, 546 University Ave, Palo Alto, CA</p>
                 </a>
             </div>
-            <a href="https://forms.gle/kaAzhpjLox962B3dA" target="_blank" class="hero-rsvp">RSVP</a>
-        </div>
-        <div class="hero-image">
-            <img src="images/main-image.jpeg" alt="Jackie and Ryan">
-        </div>
-    </section>
-
-
-    <!-- Photo Gallery Section -->
-    <section class="gallery">
-        <div class="container">
-            <h2>Our Story</h2>
-            <div class="photo-grid">
-                <div class="photo-item">
-                    <img src="images/brockway-tahoe.jpeg" alt="Brockway Tahoe">
-                    <p class="photo-caption">Brockway, Lake Tahoe</p>
-                </div>
-                <div class="photo-item">
-                    <img src="images/colombia-fishing.jpeg" alt="Colombia Fishing">
-                    <p class="photo-caption">Fishing in Colombia</p>
-                </div>
-                <div class="photo-item">
-                    <img src="images/eclipse.jpeg" alt="Eclipse">
-                    <p class="photo-caption">Solar Eclipse</p>
-                </div>
-                <div class="photo-item">
-                    <img src="images/taiwan-rechao.jpeg" alt="Taiwan Rechao">
-                    <p class="photo-caption">Rechao, Taiwan</p>
-                </div>
+            <div class="rsvp-section">
+                <a href="https://forms.gle/kaAzhpjLox962B3dA" target="_blank" class="hero-rsvp">RSVP</a>
             </div>
         </div>
-    </section>
 
-    <!-- Video Section -->
-    <section class="videos">
-        <div class="container">
-            <h2>Moments in Motion</h2>
-            <div class="video-grid video-grid-vertical">
-                <div class="video-item video-item-vertical">
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="home">Home</button>
+            <button class="nav-tab" data-tab="story">Our Story</button>
+            <button class="nav-tab" data-tab="photos">Photos</button>
+        </nav>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Home Tab -->
+            <div id="home" class="tab-pane active">
+                <div class="main-photo">
+                    <img src="images/main-image.jpeg" alt="Jackie and Ryan">
+                </div>
+            </div>
+
+            <!-- Our Story Tab -->
+            <div id="story" class="tab-pane" style="display: none;">
+                <div class="story-content">
+                    <h2>Our Story</h2>
+                    <div class="photo-grid">
+                        <div class="photo-item">
+                            <img src="images/brockway-tahoe.jpeg" alt="Brockway Tahoe">
+                            <p class="photo-caption">Brockway, Lake Tahoe</p>
+                        </div>
+                        <div class="photo-item">
+                            <img src="images/colombia-fishing.jpeg" alt="Colombia Fishing">
+                            <p class="photo-caption">Fishing in Colombia</p>
+                        </div>
+                        <div class="photo-item">
+                            <img src="images/eclipse.jpeg" alt="Eclipse">
+                            <p class="photo-caption">Solar Eclipse</p>
+                        </div>
+                        <div class="photo-item">
+                            <img src="images/taiwan-rechao.jpeg" alt="Taiwan Rechao">
+                            <p class="photo-caption">Rechao, Taiwan</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Photos Tab -->
+            <div id="photos" class="tab-pane" style="display: none;">
+                <div class="photos-content">
+                    <h2>Moments in Motion</h2>
                     <div class="video-wrapper video-wrapper-vertical">
                         <iframe title="vimeo-player"
                                 src="https://player.vimeo.com/video/1005683299?h=3de607953d&title=0&byline=0&portrait=0"
@@ -75,7 +107,7 @@
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">
@@ -91,6 +123,6 @@
         <img class="lightbox-content" id="lightbox-img">
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=5"></script>
 </body>
 </html><!-- Updated: Sun Nov  2 14:34:52 PST 2025 -->

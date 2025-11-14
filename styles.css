@@ -6,16 +6,16 @@
 }
 
 body {
-    font-family: 'Lato', sans-serif;
-    font-weight: 300;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 400;
     line-height: 1.6;
     color: #333;
     background-color: #fafafa;
 }
 
 h1, h2, h3 {
-    font-family: 'Playfair Display', serif;
-    font-weight: 400;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 600;
 }
 
 .container {
@@ -24,66 +24,138 @@ h1, h2, h3 {
     padding: 0 20px;
 }
 
-/* Hero Section */
-.hero {
-    position: relative;
-    height: 100vh;
-    min-height: 600px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 40px;
-    overflow: hidden;
-    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+/* Main Container */
+.main-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    background: #fafafa;
+    min-height: 100vh;
 }
 
-.hero-image {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
-
-.hero-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.85;
-}
-
-.hero-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(180deg,
-        rgba(255,255,255,0.1) 0%,
-        rgba(255,255,255,0.3) 50%,
-        rgba(255,255,255,0.1) 100%);
-    z-index: 2;
-}
-
-.hero-content {
-    position: relative;
+/* Mountain Icon */
+.mountain-icon {
     text-align: center;
-    z-index: 3;
-    padding: 20px 35px;
-    background: rgba(255, 255, 255, 0.4);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    margin-bottom: 30px;
+    padding-top: 20px;
+}
+
+/* Header Section */
+.header-section {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Navigation Tabs */
+.nav-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.nav-tab {
+    background: none;
+    border: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    color: #888;
+    cursor: pointer;
+    padding: 8px 0;
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.nav-tab:hover {
+    color: #444;
+}
+
+.nav-tab.active {
+    color: #2c2c2c;
+}
+
+.nav-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -11px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #8B7B6B;
+}
+
+/* Tab Content */
+.tab-content {
+    margin-top: 40px;
+}
+
+.tab-pane {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Main Photo */
+.main-photo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.main-photo img {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
     border-radius: 4px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* RSVP Section */
+.rsvp-section {
+    text-align: center;
+    margin: 20px 0 10px 0;
 }
 
 .couple-names {
+    font-family: 'Fraunces', serif;
     font-size: 2.8rem;
-    margin-bottom: 8px;
+    margin-bottom: 20px;
     color: #2c2c2c;
-    letter-spacing: 2px;
+    font-weight: 900;
+    font-optical-sizing: auto;
+    letter-spacing: 0.5px;
     line-height: 1;
+}
+
+/* Countdown Timer Styles */
+.countdown-container {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.countdown-text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1.1rem;
+    color: #444;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.countdown-text span {
+    font-weight: 400;
+    color: #2c2c2c;
+}
+
+.wedding-now {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: #2c2c2c;
+    font-weight: 400;
+    letter-spacing: 1px;
 }
 
 .wedding-date {
@@ -91,19 +163,21 @@ h1, h2, h3 {
 }
 
 .date-text {
-    font-size: 1.2rem;
-    color: #444;
-    margin-bottom: 2px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1.15rem;
+    color: #2c2c2c;
+    margin-bottom: 8px;
     font-weight: 400;
-    line-height: 1.2;
+    line-height: 1.3;
 }
 
 .time-text {
-    font-size: 1rem;
-    color: #555;
-    font-weight: 300;
-    margin-bottom: 2px;
-    line-height: 1.2;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1.05rem;
+    color: #444;
+    font-weight: 400;
+    margin-bottom: 4px;
+    line-height: 1.3;
 }
 
 .location-link {
@@ -117,13 +191,14 @@ h1, h2, h3 {
 }
 
 .location-text {
-    font-size: 1rem;
-    color: #555;
-    font-weight: 300;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1.05rem;
+    color: #444;
+    font-weight: 400;
     margin-top: 2px;
     margin-bottom: 12px;
-    line-height: 1.2;
-    text-decoration: underline;
+    line-height: 1.3;
+    text-decoration: none;
 }
 
 .hero-rsvp {
@@ -229,17 +304,17 @@ h1, h2, h3 {
     font-style: italic;
 }
 
-/* Gallery Section */
-.gallery {
-    padding: 80px 0;
-    background: #fafafa;
+/* Story and Photos Content */
+.story-content, .photos-content {
+    text-align: center;
 }
 
-.gallery h2 {
-    text-align: center;
-    font-size: 2.5rem;
-    margin-bottom: 50px;
+.story-content h2, .photos-content h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 2rem;
+    margin-bottom: 40px;
     color: #2c2c2c;
+    font-weight: 600;
 }
 
 .photo-grid {
@@ -445,7 +520,12 @@ h1, h2, h3 {
 
     .couple-names {
         font-size: 2.2rem;
-        margin-bottom: 6px;
+        margin-bottom: 15px;
+    }
+
+    /* Countdown adjustments for tablet */
+    .countdown-text {
+        font-size: 1rem;
     }
 
     .date-text {
@@ -502,6 +582,15 @@ h1, h2, h3 {
     .hero {
         padding-bottom: 80px;
         min-height: 500px;
+    }
+
+    /* Countdown adjustments for mobile */
+    .countdown-container {
+        margin-bottom: 12px;
+    }
+
+    .countdown-text {
+        font-size: 0.9rem;
     }
 
     .hero-content {
