@@ -55,32 +55,79 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCountdown(); // Initial call
     setInterval(updateCountdown, 60000); // Update every minute (days don't change that fast)
 
-    // Tab Navigation
-    const tabs = document.querySelectorAll('.nav-tab');
-    const panes = document.querySelectorAll('.tab-pane');
+    // ==================== SCROLL NAVIGATION ====================
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Remove active class from all tabs and panes
-            tabs.forEach(t => t.classList.remove('active'));
-            panes.forEach(p => p.style.display = 'none');
+    // Smooth scroll for navigation links with offset
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
 
-            // Add active class to clicked tab
-            this.classList.add('active');
+            const targetId = this.getAttribute('href').substring(1);
+            const targetSection = document.getElementById(targetId);
 
-            // Show corresponding pane
-            const tabId = this.getAttribute('data-tab');
-            const pane = document.getElementById(tabId);
-            if (pane) {
-                pane.style.display = 'block';
+            if (targetSection) {
+                const navHeight = document.querySelector('.scroll-nav').offsetHeight;
+                const targetPosition = targetSection.offsetTop - navHeight + 1;
+
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+
+                // Update active state immediately
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
             }
         });
     });
 
+    // Scroll spy for active navigation highlighting
+    function updateActiveNav() {
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const scrollPosition = window.scrollY + 100; // Offset for detection
+
+        sections.forEach((section, index) => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.offsetHeight;
+
+            if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                navLinks.forEach(link => link.classList.remove('active'));
+                if (navLinks[index]) {
+                    navLinks[index].classList.add('active');
+                }
+            }
+        });
+    }
+
+    // Throttle scroll events for performance
+    let isScrolling = false;
+    window.addEventListener('scroll', () => {
+        if (!isScrolling) {
+            window.requestAnimationFrame(() => {
+                updateActiveNav();
+
+                // Add shadow to nav when scrolled
+                const nav = document.querySelector('.scroll-nav');
+                if (window.scrollY > 10) {
+                    nav.classList.add('scrolled');
+                } else {
+                    nav.classList.remove('scrolled');
+                }
+
+                isScrolling = false;
+            });
+            isScrolling = true;
+        }
+    });
+
+    // Initial active state
+    updateActiveNav();
+
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const closeBtn = document.querySelector('.close-lightbox');
-    const photoItems = document.querySelectorAll('.photo-item img');
+    const photoItems = document.querySelectorAll('.photo-grid .photo-item img');
 
     // Open lightbox when photo is clicked
     photoItems.forEach(photo => {
@@ -149,10 +196,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }, observerOptions);
 
     // Observe all sections
-    const sections = document.querySelectorAll('section');
-    sections.forEach(section => {
+    const sectionsToAnimate = document.querySelectorAll('.section');
+    sectionsToAnimate.forEach(section => {
         section.classList.add('fade-in-element');
         observer.observe(section);
+    });
+
+    // Add fade-in class to section content
+    document.querySelectorAll('.section').forEach(section => {
+        // Add to specific content elements within sections
+        const contentElements = section.querySelectorAll('h2, .story-text, .story-image, .agenda, .venue-info, .photo-grid, .video-container');
+        contentElements.forEach(el => {
+            el.classList.add('fade-in-element');
+            observer.observe(el);
+        });
     });
 
     // Add CSS for fade-in animation
