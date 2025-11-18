@@ -157,12 +157,12 @@ h1, h2, h3 {
 
 /* Hero Content - Translucent box */
 .hero-content {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.70);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border-radius: 20px;
     padding: 40px 50px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
     text-align: center;
     max-width: 600px;
     width: 90%;
@@ -173,6 +173,15 @@ h1, h2, h3 {
 .hero-overlay .mountain-icon {
     text-align: center;
     margin-bottom: 20px;
+}
+
+/* Text shadows for better legibility on translucent background */
+.hero-content .couple-names,
+.hero-content .countdown-text,
+.hero-content .date-text,
+.hero-content .time-text,
+.hero-content .location-text {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .story-section {
@@ -878,6 +887,7 @@ h1, h2, h3 {
     .hero-content {
         padding: 30px 35px;
         width: 92%;
+        background: rgba(255, 255, 255, 0.72);
     }
 
     .couple-names {
@@ -998,6 +1008,7 @@ h1, h2, h3 {
         padding: 25px 20px;
         width: 94%;
         max-width: 400px;
+        background: rgba(255, 255, 255, 0.75);
     }
 
     .hero-overlay .mountain-icon img {
