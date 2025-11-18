@@ -151,8 +151,8 @@ h1, h2, h3 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 20px;
+    justify-content: flex-start;
+    padding: 80px 20px 20px;
 }
 
 /* Hero Content - Translucent box */
@@ -161,7 +161,7 @@ h1, h2, h3 {
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     border-radius: 20px;
-    padding: 40px 50px;
+    padding: 25px 40px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
     text-align: center;
     max-width: 600px;
@@ -172,7 +172,7 @@ h1, h2, h3 {
 /* Mountain icon positioning - inside the content box */
 .hero-overlay .mountain-icon {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 /* Text shadows for better legibility on translucent background */
@@ -231,7 +231,7 @@ h1, h2, h3 {
 .couple-names {
     font-family: 'Fraunces', serif;
     font-size: 2.8rem;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     color: #2c2c2c;
     font-weight: 900;
     font-optical-sizing: auto;
@@ -242,7 +242,7 @@ h1, h2, h3 {
 /* Countdown Timer Styles */
 .countdown-container {
     text-align: center;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
 }
 
 .countdown-text {
@@ -884,8 +884,12 @@ h1, h2, h3 {
         min-height: 500px;
     }
 
+    .hero-overlay {
+        padding: 60px 20px 20px;
+    }
+
     .hero-content {
-        padding: 30px 35px;
+        padding: 20px 30px;
         width: 92%;
         background: rgba(255, 255, 255, 0.72);
     }
@@ -1004,8 +1008,12 @@ h1, h2, h3 {
         min-height: 450px;
     }
 
+    .hero-overlay {
+        padding: 50px 15px 20px;
+    }
+
     .hero-content {
-        padding: 25px 20px;
+        padding: 20px 18px;
         width: 94%;
         max-width: 400px;
         background: rgba(255, 255, 255, 0.75);
