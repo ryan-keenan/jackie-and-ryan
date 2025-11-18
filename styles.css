@@ -26,9 +26,9 @@ h1, h2, h3 {
 
 /* Main Container */
 .main-container {
-    max-width: 900px;
+    max-width: 100%;
     margin: 0 auto;
-    padding: 40px 20px;
+    padding: 0;
     background: #fafafa;
     min-height: 100vh;
 }
@@ -46,58 +46,98 @@ h1, h2, h3 {
     margin-bottom: 30px;
 }
 
-/* Navigation Tabs */
-.nav-tabs {
+/* ==================== SCROLL NAVIGATION ==================== */
+.scroll-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     display: flex;
     justify-content: center;
-    gap: 40px;
-    margin-bottom: 30px;
-    padding-bottom: 10px;
+    gap: 30px;
+    padding: 20px;
+    background: rgba(250, 250, 250, 0.98);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    margin: -40px -20px 0;
+    width: calc(100% + 40px);
 }
 
-.nav-tab {
-    background: none;
-    border: none;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 1rem;
+.nav-link {
     color: #888;
-    cursor: pointer;
-    padding: 8px 0;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 400;
+    padding: 8px 16px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
     position: relative;
-    transition: color 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
-.nav-tab:hover {
-    color: #444;
-}
-
-.nav-tab.active {
+.nav-link:hover {
     color: #2c2c2c;
+    background: rgba(139, 123, 107, 0.1);
 }
 
-.nav-tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: -11px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: #8B7B6B;
+.nav-link.active {
+    color: #2c2c2c;
+    background: rgba(139, 123, 107, 0.15);
+    font-weight: 500;
 }
 
-/* Tab Content */
-.tab-content {
-    margin-top: 40px;
+/* Scroll nav shadow when scrolled */
+.scroll-nav.scrolled {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-.tab-pane {
-    animation: fadeIn 0.3s ease;
+/* ==================== SECTION LAYOUT ==================== */
+.section {
+    min-height: 100vh;
+    padding: 100px 20px 80px;
+    scroll-margin-top: 70px;
+    position: relative;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+.section > * {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Section backgrounds */
+.home-section {
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 100px;
+}
+
+.story-section {
+    background: white;
+}
+
+.details-section {
+    background: #fafafa;
+}
+
+.media-section {
+    background: white;
+}
+
+/* Section headings */
+.section h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c2c2c;
+    text-align: center;
+    margin-bottom: 50px;
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 0, "WONK" 0;
 }
 
 /* Main Photo */
@@ -304,12 +344,242 @@ h1, h2, h3 {
     font-style: italic;
 }
 
-/* Story and Photos Content */
-.story-content, .photos-content {
+/* ==================== STORY SECTION ==================== */
+.story-content {
+    padding: 0 20px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.story-text {
+    margin: 40px auto;
+    max-width: 700px;
     text-align: center;
 }
 
-.story-content h2, .photos-content h2 {
+.story-text p {
+    font-size: 1.15rem;
+    line-height: 1.8;
+    color: #444;
+    margin-bottom: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.story-image {
+    text-align: center;
+    margin-top: 50px;
+}
+
+.story-image img {
+    width: 100%;
+    max-width: 700px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* ==================== EVENT DETAILS SECTION ==================== */
+.details-content {
+    padding: 0 20px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.agenda, .venue-info {
+    margin: 50px auto;
+    padding: 40px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    max-width: 700px;
+}
+
+.agenda h3, .venue-info h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+    color: #2c2c2c;
+    text-align: center;
+}
+
+.timeline {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.timeline li {
+    display: flex;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.timeline li:last-child {
+    border-bottom: none;
+}
+
+.timeline-time {
+    font-weight: 600;
+    color: #8B7B6B;
+    min-width: 100px;
+    font-size: 1.05rem;
+}
+
+.timeline-event {
+    color: #444;
+    font-size: 1.05rem;
+    margin-left: 20px;
+}
+
+.venue-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #2c2c2c;
+    margin: 20px 0 10px;
+    text-align: center;
+}
+
+.venue-address {
+    font-size: 1.1rem;
+    color: #666;
+    text-align: center;
+    line-height: 1.6;
+}
+
+.venue-image {
+    margin: 30px 0;
+    text-align: center;
+}
+
+.venue-image img {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.map-button {
+    display: inline-block;
+    margin: 30px auto 0;
+    padding: 12px 30px;
+    background: rgba(139, 123, 107, 0.9);
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-align: center;
+    display: block;
+    max-width: 200px;
+}
+
+.map-button:hover {
+    background: rgba(139, 123, 107, 1);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(139, 123, 107, 0.3);
+}
+
+.venue-description {
+    margin: 30px 0;
+    text-align: left;
+}
+
+.venue-description > p {
+    font-size: 1.05rem;
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 25px;
+    text-align: center;
+    font-style: italic;
+}
+
+.chef-info, .cuisine-info {
+    margin: 30px 0;
+    padding: 25px;
+    background: rgba(139, 123, 107, 0.05);
+    border-radius: 8px;
+}
+
+.chef-info h4, .cuisine-info h4 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #2c2c2c;
+    margin-bottom: 15px;
+    font-family: 'Fraunces', serif;
+}
+
+.chef-info p, .cuisine-info p {
+    font-size: 0.98rem;
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 12px;
+}
+
+.chef-info p:last-child, .cuisine-info p:last-child {
+    margin-bottom: 0;
+}
+
+.additional-info {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.additional-info h4 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2c2c2c;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.additional-info ul {
+    list-style: none;
+    padding: 0;
+}
+
+.additional-info li {
+    padding: 10px 0;
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.additional-info strong {
+    color: #444;
+}
+
+/* ==================== MEDIA SECTION ==================== */
+.media-content {
+    padding: 0 20px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.photo-gallery {
+    margin-bottom: 80px;
+}
+
+.photo-gallery h3,
+.video-container h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: #2c2c2c;
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+/* Photos Content */
+.photos-content {
+    text-align: center;
+}
+
+.photos-content h2 {
     font-family: 'Fraunces', serif;
     font-size: 2rem;
     margin-bottom: 40px;
@@ -487,35 +757,57 @@ h1, h2, h3 {
 
 /* Footer */
 .footer {
-    padding: 60px 0;
+    padding: 15px 0;
     background: #2c2c2c;
     color: white;
     text-align: center;
 }
 
 .footer p {
+    font-family: 'Fraunces', serif;
     font-size: 1.1rem;
     margin-bottom: 10px;
-    font-weight: 300;
+    font-weight: 900;
 }
 
 .footer-names {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
-    margin-top: 20px;
+    font-family: 'Fraunces', serif;
+    font-size: 2.8rem !important;
+    margin: 0;
     color: #d4a574;
+    font-weight: 900;
+    font-optical-sizing: auto;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: 2px;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .hero {
-        padding-bottom: 60px;
+    /* Navigation */
+    .scroll-nav {
+        gap: 15px;
+        padding: 15px 10px;
     }
 
-    .hero-content {
-        padding: 18px 25px;
-        width: 90%;
-        max-width: 400px;
+    .nav-link {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+    }
+
+    /* Sections */
+    .section {
+        min-height: auto;
+        padding: 80px 20px 60px;
+    }
+
+    .section h2 {
+        font-size: 2rem;
+        margin-bottom: 40px;
+    }
+
+    /* Home Section */
+    .home-section {
+        padding-top: 80px;
     }
 
     .couple-names {
@@ -544,6 +836,25 @@ h1, h2, h3 {
     .hero-rsvp {
         padding: 9px 25px;
         font-size: 0.9rem;
+    }
+
+    /* Story */
+    .story-text p {
+        font-size: 1.05rem;
+    }
+
+    /* Event Details */
+    .agenda, .venue-info {
+        padding: 30px;
+    }
+
+    .timeline-time {
+        min-width: 80px;
+        font-size: 0.95rem;
+    }
+
+    .timeline-event {
+        font-size: 0.95rem;
     }
 
     .details-grid {
@@ -579,9 +890,32 @@ h1, h2, h3 {
 }
 
 @media (max-width: 480px) {
-    .hero {
-        padding-bottom: 80px;
-        min-height: 500px;
+    /* Navigation */
+    .scroll-nav {
+        gap: 8px;
+        padding: 12px 5px;
+        flex-wrap: wrap;
+    }
+
+    .nav-link {
+        font-size: 0.85rem;
+        padding: 5px 10px;
+    }
+
+    /* Sections */
+    .section {
+        padding: 60px 15px 40px;
+    }
+
+    .section h2 {
+        font-size: 1.6rem;
+        margin-bottom: 30px;
+    }
+
+    /* Home */
+    .home-section {
+        padding-top: 60px;
+        min-height: auto;
     }
 
     /* Countdown adjustments for mobile */
@@ -591,11 +925,6 @@ h1, h2, h3 {
 
     .countdown-text {
         font-size: 0.9rem;
-    }
-
-    .hero-content {
-        padding: 15px 20px;
-        width: 92%;
     }
 
     .couple-names {
@@ -630,6 +959,42 @@ h1, h2, h3 {
         font-weight: 400;
     }
 
+    /* Story */
+    .story-text p {
+        font-size: 1rem;
+        text-align: left;
+    }
+
+    /* Event Details */
+    .agenda, .venue-info {
+        padding: 20px;
+    }
+
+    .agenda h3, .venue-info h3 {
+        font-size: 1.4rem;
+    }
+
+    .timeline li {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 15px 0;
+    }
+
+    .timeline-event {
+        margin-left: 0;
+        margin-top: 5px;
+    }
+
+    .additional-info li {
+        font-size: 0.95rem;
+    }
+
+    /* Media */
+    .photo-gallery h3,
+    .video-container h3 {
+        font-size: 1.3rem;
+    }
+
     .photo-grid {
         grid-template-columns: 1fr;
         gap: 10px;
@@ -653,7 +1018,7 @@ h1, h2, h3 {
     }
 
     .footer {
-        padding: 40px 0;
+        padding: 12px 0;
     }
 
     .footer p {
@@ -661,6 +1026,6 @@ h1, h2, h3 {
     }
 
     .footer-names {
-        font-size: 1.3rem;
+        font-size: 1.9rem !important;
     }
 }
