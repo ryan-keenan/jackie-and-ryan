@@ -126,22 +126,122 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxVideo = document.getElementById('lightbox-video');
+    const lightboxCaption = document.getElementById('lightbox-caption');
+    const lightboxCounter = document.getElementById('lightbox-counter');
     const closeBtn = document.querySelector('.close-lightbox');
-    const photoItems = document.querySelectorAll('.photo-grid .photo-item img');
+    const prevBtn = document.getElementById('lightbox-prev');
+    const nextBtn = document.getElementById('lightbox-next');
 
-    // Open lightbox when photo is clicked
-    photoItems.forEach(photo => {
-        photo.addEventListener('click', function() {
+    // Get all media items (photos and videos)
+    const photoItems = document.querySelectorAll('.photo-grid .photo-item');
+    const videoItems = document.querySelectorAll('.video-grid .media-item');
+    const allMediaItems = [...photoItems, ...videoItems];
+
+    let currentMediaIndex = 0;
+
+    // Function to create video iframe
+    function createVideoIframe(videoId, hash, aspectRatio) {
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://player.vimeo.com/video/${videoId}?h=${hash}&autoplay=1&title=0&byline=0&portrait=0`;
+        iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('frameborder', '0');
+        iframe.className = aspectRatio === 'vertical' ? 'lightbox-video-vertical' : 'lightbox-video-horizontal';
+        return iframe;
+    }
+
+    // Function to show media at specific index
+    function showMedia(index) {
+        if (index < 0) {
+            currentMediaIndex = allMediaItems.length - 1;
+        } else if (index >= allMediaItems.length) {
+            currentMediaIndex = 0;
+        } else {
+            currentMediaIndex = index;
+        }
+
+        const currentItem = allMediaItems[currentMediaIndex];
+        const mediaType = currentItem.getAttribute('data-type') || 'photo';
+        const longCaption = currentItem.getAttribute('data-long-caption') || '';
+
+        // Clear previous content
+        lightboxImg.style.display = 'none';
+        lightboxVideo.style.display = 'none';
+        lightboxVideo.innerHTML = '';
+
+        if (mediaType === 'video') {
+            // Handle video
+            const videoId = currentItem.getAttribute('data-video-id');
+            const videoHash = currentItem.getAttribute('data-video-hash');
+            const aspectRatio = currentItem.getAttribute('data-aspect-ratio');
+
+            const iframe = createVideoIframe(videoId, videoHash, aspectRatio);
+            lightboxVideo.appendChild(iframe);
+            lightboxVideo.style.display = 'block';
+        } else {
+            // Handle photo
+            const img = currentItem.querySelector('img');
+            lightboxImg.src = img.src;
+            lightboxImg.alt = img.alt;
+            lightboxImg.style.display = 'block';
+        }
+
+        // Only show caption for photos, not for videos
+        if (mediaType === 'video') {
+            lightboxCaption.textContent = '';
+            lightboxCaption.style.display = 'none';
+        } else {
+            lightboxCaption.textContent = longCaption;
+            lightboxCaption.style.display = 'block';
+        }
+
+        lightboxCounter.textContent = `${currentMediaIndex + 1} of ${allMediaItems.length}`;
+    }
+
+    // Open lightbox when media is clicked
+    allMediaItems.forEach((item, index) => {
+        // For video items, use the whole container as click target
+        // For photo items, use the image
+        const isVideo = item.classList.contains('video-item');
+        const clickTarget = isVideo ? item : (item.querySelector('img') || item);
+
+        clickTarget.addEventListener('click', function(e) {
+            // Prevent event from bubbling if clicking on a video item
+            if (isVideo) {
+                e.preventDefault();
+            }
+            currentMediaIndex = index;
+            showMedia(currentMediaIndex);
             lightbox.style.display = 'block';
-            lightboxImg.src = this.src;
-            lightboxImg.alt = this.alt;
             document.body.style.overflow = 'hidden'; // Prevent scrolling
         });
+
+        // Also add cursor pointer style for video items
+        if (isVideo) {
+            item.style.cursor = 'pointer';
+        }
     });
 
     // Close lightbox when X is clicked
     if (closeBtn) {
         closeBtn.addEventListener('click', closeLightbox);
+    }
+
+    // Previous button click
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showMedia(currentMediaIndex - 1);
+        });
+    }
+
+    // Next button click
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showMedia(currentMediaIndex + 1);
+        });
     }
 
     // Close lightbox when clicking outside the image
@@ -151,16 +251,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Close lightbox with Escape key
+    // Keyboard navigation
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && lightbox.style.display === 'block') {
-            closeLightbox();
+        if (lightbox.style.display === 'block') {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            } else if (e.key === 'ArrowLeft') {
+                showMedia(currentMediaIndex - 1);
+            } else if (e.key === 'ArrowRight') {
+                showMedia(currentMediaIndex + 1);
+            }
         }
     });
 
     function closeLightbox() {
         lightbox.style.display = 'none';
         document.body.style.overflow = 'auto'; // Re-enable scrolling
+        // Clear video content to stop playback
+        lightboxVideo.innerHTML = '';
+        lightboxVideo.style.display = 'none';
     }
 
     // Smooth scroll for anchor links
