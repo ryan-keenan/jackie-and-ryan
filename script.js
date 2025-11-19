@@ -292,8 +292,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add fade-in animation for elements as they come into view
     const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
+        threshold: 0.05, // Lower threshold for earlier triggering (5% instead of 10%)
+        rootMargin: '0px 0px 100px 0px' // Trigger 100px before entering viewport instead of 50px after
     };
 
     const observer = new IntersectionObserver(function(entries) {
@@ -332,6 +332,12 @@ document.addEventListener('DOMContentLoaded', function() {
         .fade-in-visible {
             opacity: 1;
             transform: translateY(0);
+        }
+        /* Faster animations on mobile for better scrolling experience */
+        @media (max-width: 768px) {
+            .fade-in-element {
+                transition: opacity 0.4s ease, transform 0.4s ease;
+            }
         }
     `;
     document.head.appendChild(style);
