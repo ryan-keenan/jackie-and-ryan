@@ -136,8 +136,8 @@ h1, h2, h3 {
 .hero-container .main-photo img {
     width: 80%;
     height: 80%;
-    object-fit: cover;
-    object-position: center;
+    object-fit: cover; /* Fill the space */
+    object-position: center 85%; /* Focus on lower portion to ensure ring is visible */
     margin: 10% auto;
     display: block;
     border-radius: 20px;
@@ -155,7 +155,7 @@ h1, h2, h3 {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding: 40px 20px 20px;
+    padding: 20px 20px 20px;
     box-sizing: border-box;
 }
 
@@ -165,11 +165,11 @@ h1, h2, h3 {
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     border-radius: 20px;
-    padding: 10px 40px 5px;
+    padding: 10px 30px 5px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.20);
     text-align: center;
-    max-width: 600px;
-    width: 90%;
+    max-width: 450px;
+    width: 80%;
     position: relative;
 }
 
@@ -1048,6 +1048,7 @@ h1, h2, h3 {
     font-variation-settings: 'opsz' 144;
     letter-spacing: 2px;
 }
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
