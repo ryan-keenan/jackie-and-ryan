@@ -1089,8 +1089,8 @@ h1, h2, h3 {
     /* Main photo - No longer absolute, part of flex flow */
     .hero-container .main-photo {
         position: relative;
-        height: 60vh;
-        min-height: 400px;
+        height: 65vh; /* Increased to show more of the image */
+        min-height: 450px; /* Increased minimum to ensure ring is visible */
         width: 100%;
     }
 
@@ -1099,7 +1099,8 @@ h1, h2, h3 {
         height: 100%;
         margin: 0;
         border-radius: 0;
-        object-position: center 30%; /* Adjust focal point to keep faces visible */
+        object-fit: cover;
+        object-position: center bottom; /* Focus on bottom of image where hands/ring are */
     }
 
     /* Hero overlay - No longer absolute, part of flex flow */
@@ -1240,12 +1241,12 @@ h1, h2, h3 {
 
     /* Main photo mobile */
     .hero-container .main-photo {
-        height: 50vh;
-        min-height: 350px;
+        height: 55vh; /* Increased to show more of the image */
+        min-height: 400px; /* Increased minimum to ensure ring is visible */
     }
 
     .hero-container .main-photo img {
-        object-position: center 25%; /* Further adjust for small screens */
+        object-position: center bottom; /* Focus on bottom of image where hands/ring are */
     }
 
     /* Hero overlay mobile */
