@@ -5,12 +5,20 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     font-weight: 200;
     line-height: 1.6;
     color: #333;
     background-color: #fafafa;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    min-height: 100vh;
 }
 
 h1, h2, h3 {
@@ -30,7 +38,7 @@ h1, h2, h3 {
     margin: 0 auto;
     padding: 0;
     background: #fafafa;
-    min-height: 100vh;
+    flex: 1;
 }
 
 
@@ -106,7 +114,9 @@ h1, h2, h3 {
     padding: 0;
     display: block;
     min-height: 100vh;
+    position: relative;
 }
+
 
 /* Hero Container - Full viewport height with relative positioning */
 .hero-container {
@@ -178,7 +188,7 @@ h1, h2, h3 {
 }
 
 .story-section {
-    background: white;
+    background: #fafafa;
 }
 
 .details-section {
@@ -186,7 +196,7 @@ h1, h2, h3 {
 }
 
 .media-section {
-    background: white;
+    background: #fafafa;
 }
 
 /* Section headings */
@@ -235,7 +245,19 @@ h1, h2, h3 {
 /* Countdown Timer Styles */
 .countdown-container {
     text-align: center;
-    margin-bottom: 4px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.countdown-container::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 1px;
+    background-color: rgba(139, 123, 107, 0.4);
 }
 
 .countdown-text {
@@ -260,7 +282,7 @@ h1, h2, h3 {
 }
 
 .wedding-date {
-    margin: 0;
+    margin: 8px 0 0 0;
 }
 
 .wedding-date .hero-rsvp {
@@ -427,7 +449,11 @@ h1, h2, h3 {
 }
 
 .story-text {
-    margin: 40px auto;
+    margin: 50px auto;
+    padding: 40px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     max-width: 700px;
     text-align: center;
 }
@@ -684,7 +710,7 @@ h1, h2, h3 {
 .photo-item {
     position: relative;
     overflow: hidden;
-    border-radius: 4px;
+    border-radius: 10px;
     cursor: pointer;
     transition: transform 0.3s ease;
     background: white;
@@ -1035,6 +1061,12 @@ h1, h2, h3 {
     background: #2c2c2c;
     color: white;
     text-align: center;
+    width: 100%;
+    margin: 0;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .footer p {
@@ -1084,6 +1116,7 @@ h1, h2, h3 {
     .home-section {
         padding-top: 0;
     }
+
 
     /* Hero Container responsive - Switch to flex layout for mobile */
     .hero-container {
@@ -1159,6 +1192,10 @@ h1, h2, h3 {
     }
 
     /* Story */
+    .story-text {
+        padding: 30px;
+    }
+    
     .story-text p {
         font-size: 1.05rem;
     }
@@ -1238,6 +1275,7 @@ h1, h2, h3 {
         min-height: auto;
     }
 
+
     /* Hero Container mobile - Ensure flex layout continues */
     .hero-container {
         display: flex;
@@ -1271,7 +1309,16 @@ h1, h2, h3 {
 
     /* Countdown adjustments for mobile */
     .countdown-container {
-        margin-bottom: 12px;
+        margin-bottom: 14px;
+    }
+    
+    .countdown-container::after {
+        width: 50px;
+        bottom: -6px;
+    }
+    
+    .wedding-date {
+        margin-top: 10px;
     }
 
     .countdown-text {
@@ -1311,6 +1358,10 @@ h1, h2, h3 {
     }
 
     /* Story */
+    .story-text {
+        padding: 20px;
+    }
+    
     .story-text p {
         font-size: 1rem;
         text-align: left;
