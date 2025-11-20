@@ -1,3 +1,6 @@
+// Script loading test
+console.log('✅ script.js loaded successfully!');
+
 // Wedding countdown timer
 function updateCountdown() {
     // Wedding date: December 21, 2025
@@ -51,6 +54,8 @@ updateCountdown(); // Run immediately
 
 // Lightbox functionality for photo gallery
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM content loaded - initializing lightbox...');
+    
     // Start the countdown again when DOM is ready
     updateCountdown(); // Initial call
     setInterval(updateCountdown, 60000); // Update every minute (days don't change that fast)
@@ -124,6 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial active state
     updateActiveNav();
 
+    console.log('Getting lightbox elements...');
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const lightboxVideo = document.getElementById('lightbox-video');
@@ -132,11 +138,34 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeBtn = document.querySelector('.close-lightbox');
     const prevBtn = document.getElementById('lightbox-prev');
     const nextBtn = document.getElementById('lightbox-next');
+    
+    console.log('Lightbox elements:', {
+        lightbox, lightboxImg, lightboxVideo, lightboxCaption, 
+        lightboxCounter, closeBtn, prevBtn, nextBtn
+    });
+    
+    // Add a test function to force show lightbox
+    window.testLightbox = function() {
+        console.log('🧪 Testing lightbox display...');
+        lightbox.style.display = 'block';
+        lightboxImg.src = 'images/main-image.jpeg';
+        lightboxImg.style.display = 'block';
+        lightboxCaption.textContent = 'Test caption';
+        lightboxCaption.style.display = 'block';
+        console.log('🧪 Lightbox should now be visible');
+    };
+    
+    console.log('🧪 Type testLightbox() in console to test manual lightbox display');
 
     // Get all media items (photos and videos)
     const photoItems = document.querySelectorAll('.photo-grid .photo-item');
     const videoItems = document.querySelectorAll('.video-grid .media-item');
     const allMediaItems = [...photoItems, ...videoItems];
+    
+    console.log('🔍 Photo items found:', photoItems.length);
+    console.log('🔍 Video items found:', videoItems.length);
+    console.log('🔍 All media items:', allMediaItems.length);
+    console.log('🔍 First photo item:', photoItems[0]);
 
     let currentMediaIndex = 0;
 
@@ -153,6 +182,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to show media at specific index
     function showMedia(index) {
+        console.log('showMedia called with index:', index);
+        
         if (index < 0) {
             currentMediaIndex = allMediaItems.length - 1;
         } else if (index >= allMediaItems.length) {
@@ -164,6 +195,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentItem = allMediaItems[currentMediaIndex];
         const mediaType = currentItem.getAttribute('data-type') || 'photo';
         const longCaption = currentItem.getAttribute('data-long-caption') || '';
+
+        console.log('Current item:', currentItem);
+        console.log('Media type:', mediaType);
+        console.log('Long caption:', longCaption);
 
         // Clear previous content
         lightboxImg.style.display = 'none';
@@ -182,9 +217,11 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Handle photo
             const img = currentItem.querySelector('img');
+            console.log('Found image:', img);
             lightboxImg.src = img.src;
             lightboxImg.alt = img.alt;
             lightboxImg.style.display = 'block';
+            console.log('Set lightbox image src to:', img.src);
         }
 
         // Only show caption for photos, not for videos
@@ -200,21 +237,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Open lightbox when media is clicked
+    console.log('Found media items:', allMediaItems.length);
+    
     allMediaItems.forEach((item, index) => {
         // For video items, use the whole container as click target
         // For photo items, use the image
         const isVideo = item.classList.contains('video-item');
         const clickTarget = isVideo ? item : (item.querySelector('img') || item);
 
+        console.log(`Setting up click listener for item ${index}:`, clickTarget);
+
         clickTarget.addEventListener('click', function(e) {
+            console.log('Photo/video clicked!', index);
+            
             // Prevent event from bubbling if clicking on a video item
             if (isVideo) {
                 e.preventDefault();
             }
             currentMediaIndex = index;
             showMedia(currentMediaIndex);
+            
+            console.log('Opening lightbox...');
+            console.log('Lightbox element:', lightbox);
+            console.log('Lightbox current display:', window.getComputedStyle(lightbox).display);
+            
             lightbox.style.display = 'block';
+            
+            console.log('After setting display block:', window.getComputedStyle(lightbox).display);
+            console.log('Lightbox visibility:', window.getComputedStyle(lightbox).visibility);
+            console.log('Lightbox z-index:', window.getComputedStyle(lightbox).zIndex);
+            
             document.body.style.overflow = 'hidden'; // Prevent scrolling
+            
+            // Temporary fix - add click to restore scroll if lightbox doesn't show
+            setTimeout(() => {
+                if (window.getComputedStyle(lightbox).display === 'none') {
+                    document.body.style.overflow = 'auto';
+                    console.log('⚠️ Lightbox failed to show - restored scrolling');
+                }
+            }, 100);
         });
 
         // Also add cursor pointer style for video items
@@ -253,8 +314,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Keyboard navigation
     document.addEventListener('keydown', function(e) {
-        if (lightbox.style.display === 'block') {
+        if (lightbox.style.display === 'block' || document.body.style.overflow === 'hidden') {
             if (e.key === 'Escape') {
+                console.log('🔑 Escape key pressed - closing lightbox');
                 closeLightbox();
             } else if (e.key === 'ArrowLeft') {
                 showMedia(currentMediaIndex - 1);
@@ -265,11 +327,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function closeLightbox() {
+        console.log('🔒 Closing lightbox...');
         lightbox.style.display = 'none';
         document.body.style.overflow = 'auto'; // Re-enable scrolling
         // Clear video content to stop playback
         lightboxVideo.innerHTML = '';
         lightboxVideo.style.display = 'none';
+        lightboxImg.style.display = 'none';
+        lightboxCaption.style.display = 'none';
+        console.log('✅ Lightbox closed and scrolling restored');
     }
 
     // Smooth scroll for anchor links
