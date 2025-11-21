@@ -304,7 +304,68 @@ function initializeLightbox() {
         }
     });
 
-    console.log('Lightbox initialization complete!');
+    // Touch/Swipe navigation for mobile
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    
+    function handleTouchStart(e) {
+        if (lightbox.style.display === 'block') {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            console.log('Touch start at:', touchStartX, touchStartY);
+        }
+    }
+    
+    function handleTouchMove(e) {
+        if (lightbox.style.display === 'block') {
+            // Prevent scrolling while swiping in lightbox
+            e.preventDefault();
+        }
+    }
+    
+    function handleTouchEnd(e) {
+        if (lightbox.style.display === 'block') {
+            const touch = e.changedTouches[0];
+            touchEndX = touch.clientX;
+            touchEndY = touch.clientY;
+            
+            console.log('Touch end at:', touchEndX, touchEndY);
+            
+            // Calculate swipe distance and direction
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const absDeltaX = Math.abs(deltaX);
+            const absDeltaY = Math.abs(deltaY);
+            
+            // Minimum swipe distance (in pixels)
+            const minSwipeDistance = 50;
+            
+            // Make sure it's more horizontal than vertical (to avoid interfering with scrolling)
+            if (absDeltaX > minSwipeDistance && absDeltaX > absDeltaY) {
+                if (deltaX > 0) {
+                    // Swiped right - go to previous photo
+                    console.log('Swiped right - previous photo');
+                    navigateLightbox('prev');
+                } else {
+                    // Swiped left - go to next photo  
+                    console.log('Swiped left - next photo');
+                    navigateLightbox('next');
+                }
+            } else {
+                console.log('Swipe not detected - distance too small or too vertical');
+            }
+        }
+    }
+    
+    // Add touch event listeners to the lightbox
+    lightbox.addEventListener('touchstart', handleTouchStart, { passive: false });
+    lightbox.addEventListener('touchmove', handleTouchMove, { passive: false });
+    lightbox.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    console.log('Lightbox initialization complete with swipe support!');
 }
 
 console.log('Script loaded successfully!');
