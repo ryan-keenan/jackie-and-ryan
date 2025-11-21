@@ -309,25 +309,34 @@ function initializeLightbox() {
     let touchStartY = 0;
     let touchEndX = 0;
     let touchEndY = 0;
+    let isSwiping = false;
     
     function handleTouchStart(e) {
         if (lightbox.style.display === 'block') {
             const touch = e.touches[0];
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
+            isSwiping = true;
             console.log('Touch start at:', touchStartX, touchStartY);
         }
     }
     
     function handleTouchMove(e) {
-        if (lightbox.style.display === 'block') {
-            // Prevent scrolling while swiping in lightbox
-            e.preventDefault();
+        if (lightbox.style.display === 'block' && isSwiping) {
+            // Don't prevent default here - let the user move their finger
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            
+            // If it's primarily a horizontal swipe, prevent scrolling
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                e.preventDefault();
+            }
         }
     }
     
     function handleTouchEnd(e) {
-        if (lightbox.style.display === 'block') {
+        if (lightbox.style.display === 'block' && isSwiping) {
             const touch = e.changedTouches[0];
             touchEndX = touch.clientX;
             touchEndY = touch.clientY;
@@ -341,10 +350,11 @@ function initializeLightbox() {
             const absDeltaY = Math.abs(deltaY);
             
             // Minimum swipe distance (in pixels)
-            const minSwipeDistance = 50;
+            const minSwipeDistance = 30; // Reduced from 50 for better sensitivity
             
             // Make sure it's more horizontal than vertical (to avoid interfering with scrolling)
-            if (absDeltaX > minSwipeDistance && absDeltaX > absDeltaY) {
+            if (absDeltaX > minSwipeDistance && absDeltaX > absDeltaY * 1.5) {
+                e.preventDefault(); // Prevent any default behavior
                 if (deltaX > 0) {
                     // Swiped right - go to previous photo
                     console.log('Swiped right - previous photo');
@@ -355,15 +365,25 @@ function initializeLightbox() {
                     navigateLightbox('next');
                 }
             } else {
-                console.log('Swipe not detected - distance too small or too vertical');
+                console.log('Swipe not detected - deltaX:', absDeltaX, 'deltaY:', absDeltaY, 'minDistance:', minSwipeDistance);
             }
+            
+            isSwiping = false;
         }
     }
     
-    // Add touch event listeners to the lightbox
-    lightbox.addEventListener('touchstart', handleTouchStart, { passive: false });
-    lightbox.addEventListener('touchmove', handleTouchMove, { passive: false });
-    lightbox.addEventListener('touchend', handleTouchEnd, { passive: false });
+    // Add touch event listeners to multiple elements for better coverage
+    const lightboxMediaContainer = document.getElementById('lightbox-media-container');
+    const swipeElements = [lightbox, lightboxImg, lightboxVideo, lightboxMediaContainer];
+    
+    swipeElements.forEach(element => {
+        if (element) {
+            element.addEventListener('touchstart', handleTouchStart, { passive: false });
+            element.addEventListener('touchmove', handleTouchMove, { passive: false });
+            element.addEventListener('touchend', handleTouchEnd, { passive: false });
+            console.log('Added touch listeners to:', element.id || element.className);
+        }
+    });
 
     console.log('Lightbox initialization complete with swipe support!');
 }
