@@ -304,8 +304,20 @@ h1, h2, h3 {
     font-size: 1.1rem;
     color: #444;
     font-weight: 200;
-    margin-bottom: 1px;
+    margin-bottom: 12px;
     line-height: 1.4;
+    position: relative;
+}
+
+.time-text::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 1px;
+    background-color: rgba(139, 123, 107, 0.4);
 }
 
 .location-link {
@@ -323,7 +335,7 @@ h1, h2, h3 {
     font-size: 1.1rem;
     color: #444;
     font-weight: 200;
-    margin-top: 2px;
+    margin-top: 8px;
     margin-bottom: 0;
     line-height: 1.4;
     text-decoration: none;
@@ -1183,10 +1195,17 @@ h1, h2, h3 {
 
     .time-text {
         font-size: 0.95rem;
+        margin-bottom: 14px;
+    }
+    
+    .time-text::after {
+        width: 50px;
+        bottom: -6px;
     }
 
     .location-text {
         font-size: 1.1rem;
+        margin-top: 10px;
         margin-bottom: 0;
     }
 
@@ -1344,12 +1363,18 @@ h1, h2, h3 {
 
     .time-text {
         font-size: 1.05rem;
-        margin-bottom: 2px;
+        margin-bottom: 14px;
         font-weight: 200;
+    }
+    
+    .time-text::after {
+        width: 50px;
+        bottom: -6px;
     }
 
     .location-text {
         font-size: 1.1rem;
+        margin-top: 10px;
         margin-bottom: 0;
         line-height: 1.4;
         font-weight: 200;
