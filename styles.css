@@ -846,14 +846,40 @@ h1, h2, h3 {
 /* Lightbox */
 .lightbox {
     display: none;
-    position: fixed;
-    z-index: 9999;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.95);
+    position: fixed !important;
+    z-index: 1000;
+    padding: 0 !important;
+    margin: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-width: 100vw !important;
+    min-height: 100vh !important;
     overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.95);
+    box-sizing: border-box !important;
+}
+
+.close-lightbox {
+    position: fixed;
+    top: 30px;
+    right: 45px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+    cursor: pointer;
+    z-index: 1003;
+}
+
+.close-lightbox:hover,
+.close-lightbox:focus {
+    color: #bbb;
 }
 
 
@@ -869,7 +895,7 @@ h1, h2, h3 {
 }
 
 .close-lightbox {
-    position: absolute;
+    position: fixed;
     top: 30px;
     right: 45px;
     color: #f1f1f1;
@@ -877,6 +903,7 @@ h1, h2, h3 {
     font-weight: bold;
     transition: 0.3s;
     cursor: pointer;
+    z-index: 1003;
 }
 
 .close-lightbox:hover,
@@ -884,10 +911,51 @@ h1, h2, h3 {
     color: #bbb;
 }
 
+/* Lightbox Video Styles */
+.lightbox-media-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100vw;
+    height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    box-sizing: border-box;
+}
+
+.lightbox-video-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-video-horizontal {
+    display: block;
+    width: auto;
+    height: 85vh;
+    max-width: 90vw;
+    aspect-ratio: 16 / 9;
+    margin: 0 auto;
+}
+
+.lightbox-video-vertical {
+    display: block;
+    width: auto;
+    height: 85vh;
+    max-width: 90vw;
+    aspect-ratio: 9 / 16;
+    margin: 0 auto;
+}
+
 /* Lightbox Navigation Buttons */
 .lightbox-prev,
 .lightbox-next {
-    position: absolute;
+    position: fixed;
     top: 50%;
     transform: translateY(-50%);
     background: rgba(0, 0, 0, 0.5);
@@ -897,14 +965,16 @@ h1, h2, h3 {
     padding: 10px 15px;
     cursor: pointer;
     transition: background 0.3s;
+    z-index: 1002;
+    border-radius: 50%;
 }
 
 .lightbox-prev {
-    left: 20px;
+    left: 30px;
 }
 
 .lightbox-next {
-    right: 20px;
+    right: 30px;
 }
 
 .lightbox-prev:hover,
@@ -914,18 +984,19 @@ h1, h2, h3 {
 
 /* Lightbox Caption */
 .lightbox-caption {
-    position: absolute;
+    position: fixed;
     bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
     text-align: center;
     color: #f1f1f1;
     font-size: 1rem;
-    padding: 15px 30px;
+    padding: 20px 40px;
     max-width: 800px;
     line-height: 1.5;
-    background: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.8);
     border-radius: 8px;
+    z-index: 1001;
 }
 
 /* Lightbox Counter */
@@ -1029,47 +1100,41 @@ h1, h2, h3 {
 /* Lightbox Media Container - No longer used after HTML simplification */
 
 .lightbox-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 90%;
-    max-height: 90%;
+    max-width: 100%;
+    max-height: 100%;
     width: auto;
     height: auto;
     object-fit: contain;
-    display: block;
     animation: zoom 0.3s;
 }
 
-.lightbox-video-wrapper {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    height: 90%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+@keyframes zoom {
+    from {
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        transform: translate(-50%, -50%) scale(1);
+    }
 }
 
-.lightbox-video-horizontal {
-    display: block;
-    width: auto;
-    height: 85vh;
-    max-width: 90vw;
-    aspect-ratio: 16 / 9;
-    margin: 0 auto;
+
+/* Fade-in Animation Classes */
+.fade-in-element {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
 }
 
-.lightbox-video-vertical {
-    display: block;
-    width: auto;
-    height: 85vh;
-    max-width: 90vw;
-    aspect-ratio: 9 / 16;
-    margin: 0 auto;
+.fade-in-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Faster animations on mobile for better scrolling experience */
+@media (max-width: 768px) {
+    .fade-in-element {
+        transition: opacity 0.4s ease, transform 0.4s ease;
+    }
 }
 
 /* Footer */
@@ -1414,16 +1479,22 @@ h1, h2, h3 {
     }
 
     .lightbox-prev {
-        left: 10px;
+        left: 15px;
     }
 
     .lightbox-next {
-        right: 10px;
+        right: 15px;
+    }
+
+    .lightbox-media-container {
+        width: 100vw;
+        height: 75vh;
+        padding: 40px 20px;
     }
 
     .lightbox-caption {
         font-size: 0.9rem;
-        padding: 12px 20px;
+        padding: 15px 20px;
         bottom: 40px;
         max-width: 90%;
     }
