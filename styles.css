@@ -914,15 +914,14 @@ h1, h2, h3 {
 /* Lightbox Video Styles */
 .lightbox-media-container {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 0;
     width: 100vw;
-    height: 80vh;
+    height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 60px;
+    padding: 80px 60px 120px 60px; /* top, right, bottom, left - extra bottom for caption */
     box-sizing: border-box;
     z-index: 1001;
 }
@@ -1109,7 +1108,8 @@ h1, h2, h3 {
     object-fit: contain;
     animation: zoom 0.3s;
     display: block;
-    margin: 0 auto;
+    margin: 0;
+    flex-shrink: 0;
 }
 
 @keyframes zoom {
@@ -1507,19 +1507,19 @@ h1, h2, h3 {
     }
 
     .lightbox-media-container {
-        width: 100vw !important;
-        height: 75vh !important;
-        padding: 40px 20px !important;
-        left: 50% !important;
-        top: 50% !important;
-        transform: translate(-50%, -50%) !important;
         position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important; /* Dynamic viewport height for mobile */
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        padding: 60px 20px 100px 20px !important; /* top, right, bottom, left */
+        box-sizing: border-box !important;
         max-width: none !important;
         min-width: 100vw !important;
-        box-sizing: border-box !important;
     }
 
     /* Force full viewport coverage on mobile */
@@ -1545,6 +1545,11 @@ h1, h2, h3 {
         padding: 15px 20px;
         bottom: 40px;
         max-width: 90%;
+    }
+
+    .lightbox-content {
+        max-width: 95% !important;
+        max-height: 85% !important;
     }
 
     .lightbox-counter {
