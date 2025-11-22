@@ -1543,8 +1543,15 @@ h1, h2, h3 {
     .lightbox-caption {
         font-size: 0.9rem;
         padding: 15px 20px;
-        bottom: 40px;
-        max-width: 90%;
+        bottom: 0px;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        transform: none !important;
+        text-align: left;
+        background: rgba(0, 0, 0, 0.8);
+        box-sizing: border-box;
     }
 
     .lightbox-content {
