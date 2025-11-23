@@ -169,11 +169,11 @@ h1, h2, h3 {
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     border-radius: 20px;
-    padding: 10px 30px 5px;
+    padding: 10px 40px 5px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.20);
     text-align: center;
-    max-width: 450px;
-    width: 80%;
+    width: calc(100% - 30px); /* Almost full width of container minus padding */
+    max-width: 650px; /* Larger max for wider screens */
     position: relative;
 }
 
@@ -233,13 +233,14 @@ h1, h2, h3 {
 
 .couple-names {
     font-family: 'Fraunces', serif;
-    font-size: 2.8rem;
+    font-size: 2.2rem;
     margin-bottom: 5px;
     color: #2c2c2c;
     font-weight: 900;
     font-optical-sizing: auto;
     letter-spacing: 0.5px;
     line-height: 1;
+    white-space: nowrap;
 }
 
 /* Countdown Timer Styles */
@@ -460,6 +461,28 @@ h1, h2, h3 {
     margin: 0 auto;
 }
 
+.story-photo {
+    margin: 30px auto 40px;
+    text-align: center;
+    max-width: 500px;
+}
+
+.story-photo img {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.story-photo-caption {
+    margin-top: 12px;
+    font-size: 0.95rem;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
 .story-text {
     margin: 50px auto;
     padding: 40px;
@@ -580,6 +603,18 @@ h1, h2, h3 {
     height: auto;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.venue-logo {
+    margin: 20px auto 30px;
+    text-align: center;
+    max-width: 300px;
+}
+
+.venue-logo img {
+    width: 100%;
+    height: auto;
+    opacity: 0.9;
 }
 
 .map-button {
@@ -1134,6 +1169,43 @@ h1, h2, h3 {
 .fade-in-visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 991px) {
+    .hero-content {
+        width: calc(100% - 60px); /* Slightly narrower than image */
+    }
+}
+
+/* Desktop adjustments - keep box wide enough for text */
+@media (min-width: 992px) {
+    .hero-content {
+        width: calc(100% - 40px); /* Keep it wide */
+        padding: 8px 40px 3px; /* Increase horizontal padding */
+    }
+}
+
+@media (min-width: 1200px) {
+    .hero-content {
+        width: calc(100% - 50px); /* Still very wide */
+        padding: 6px 45px 2px; /* More horizontal padding */
+    }
+}
+
+/* Extra wide screens - compact vertically to show faces */
+@media (min-width: 1600px) {
+    .hero-content {
+        width: calc(100% - 60px); /* Keep wide for text */
+        padding: 5px 50px 2px; /* More horizontal padding */
+    }
+}
+
+@media (min-width: 1920px) {
+    .hero-content {
+        width: calc(100% - 80px); /* Still very wide */
+        padding: 5px 55px 2px; /* Extra horizontal padding */
+    }
 }
 
 /* Faster animations on mobile for better scrolling experience */
