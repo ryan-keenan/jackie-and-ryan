@@ -462,11 +462,13 @@ h1, h2, h3 {
 }
 
 .story-attribution {
-    font-size: 0.9rem;
+    font-family: 'Fraunces', serif;
+    font-size: 0.75rem;
     color: #666;
     text-align: center;
     margin: 5px 0;
     font-style: italic;
+    font-weight: 400;
 }
 
 .story-photo {
