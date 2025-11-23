@@ -461,14 +461,22 @@ h1, h2, h3 {
     margin: 0 auto;
 }
 
+.story-content h2 {
+    margin-bottom: 15px !important;
+}
+
 .story-content .story-attribution {
     font-family: 'Fraunces', serif !important;
     font-size: 0.75rem !important;
     color: #666 !important;
     text-align: center !important;
-    margin: 5px 0 !important;
+    margin: 3px 0 !important;
     font-style: italic !important;
     font-weight: 400 !important;
+}
+
+.story-content .story-attribution:last-of-type {
+    margin-bottom: 25px !important;
 }
 
 .story-photo {
