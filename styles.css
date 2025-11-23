@@ -461,6 +461,14 @@ h1, h2, h3 {
     margin: 0 auto;
 }
 
+.story-attribution {
+    font-size: 0.9rem;
+    color: #666;
+    text-align: center;
+    margin: 5px 0;
+    font-style: italic;
+}
+
 .story-photo {
     margin: 30px auto 40px;
     text-align: center;
