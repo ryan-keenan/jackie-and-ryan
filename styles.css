@@ -1271,6 +1271,17 @@ h1, h2, h3 {
     letter-spacing: 2px;
 }
 
+.footer-attribution {
+    font-family: 'Fraunces', serif;
+    font-size: 0.75rem;
+    color: #aaa;
+    text-align: center;
+    margin: 10px 20px 0;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -1746,5 +1757,11 @@ h1, h2, h3 {
 
     .footer-names {
         font-size: 1.9rem !important;
+    }
+
+    .footer-attribution {
+        font-size: 0.7rem;
+        margin: 8px 15px 0;
+        line-height: 1.3;
     }
 }
