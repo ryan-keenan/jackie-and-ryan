@@ -470,6 +470,45 @@ setTimeout(function() {
     }
 }, 500);
 
+// Global toggle function - called directly from HTML onclick
+function toggleStory() {
+    console.log('toggleStory() called!');
+    
+    const btn = document.getElementById('storyExpandBtn');
+    const content = document.getElementById('storyFullContent');
+    const expandText = btn.querySelector('.expand-text');
+    const collapseText = btn.querySelector('.collapse-text');
+    const icon = btn.querySelector('.expand-icon');
+    
+    const isExpanded = btn.classList.contains('expanded');
+    console.log('Currently expanded:', isExpanded);
+    
+    if (isExpanded) {
+        // Collapse
+        console.log('Collapsing story...');
+        btn.classList.remove('expanded');
+        content.style.display = 'none';
+        content.classList.remove('show');
+        expandText.style.display = 'inline';
+        collapseText.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+        
+        // Scroll back to story section
+        document.getElementById('story').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        // Expand
+        console.log('Expanding story...');
+        btn.classList.add('expanded');
+        content.style.display = 'block';
+        content.classList.add('show');
+        expandText.style.display = 'none';
+        collapseText.style.display = 'inline';
+        icon.style.transform = 'rotate(180deg)';
+    }
+    
+    console.log('Story toggle completed');
+}
+
 console.log('Script loaded successfully!');
 
 // Simple inline backup - this should definitely work
