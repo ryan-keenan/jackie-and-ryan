@@ -520,29 +520,32 @@ h1, h2, h3 {
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* Story expand/collapse functionality */
+/* Story expand/collapse functionality - matches RSVP button style */
 .story-expand-btn {
-    background: linear-gradient(135deg, #d4a574, #c19660);
-    border: none;
-    padding: 12px 24px;
-    border-radius: 25px;
+    display: inline-block;
+    padding: 10px 28px;
+    background: rgba(212, 165, 116, 0.9);
     color: white;
-    font-family: 'Poppins', sans-serif;
+    text-decoration: none;
     font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
+    font-weight: 200;
+    letter-spacing: 1.5px;
+    border-radius: 3px;
     transition: all 0.3s ease;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    margin: 20px auto;
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 20px auto;
-    box-shadow: 0 4px 15px rgba(212, 165, 116, 0.3);
 }
 
 .story-expand-btn:hover {
+    background: rgba(184, 147, 95, 0.95);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
-    background: linear-gradient(135deg, #c19660, #ad8550);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 .story-expand-btn:active {
@@ -1458,10 +1461,11 @@ h1, h2, h3 {
         font-size: 1.05rem;
     }
 
-    /* Story expand button tablet styles */
+    /* Story expand button tablet styles - matches RSVP */
     .story-expand-btn {
-        padding: 10px 20px;
-        font-size: 0.9rem;
+        padding: 12px 28px;
+        font-size: 0.95rem;
+        min-height: 44px; /* Touch-friendly size */
     }
 
     /* Event Details */
@@ -1653,10 +1657,12 @@ h1, h2, h3 {
         text-align: left;
     }
 
-    /* Story expand button mobile styles */
+    /* Story expand button mobile styles - matches RSVP */
     .story-expand-btn {
-        padding: 8px 16px;
-        font-size: 0.85rem;
+        padding: 10px 26px;
+        font-size: 1rem;
+        letter-spacing: 1px;
+        font-weight: 200;
         margin: 15px auto;
     }
 
