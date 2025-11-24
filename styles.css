@@ -1429,6 +1429,22 @@ h1, h2, h3 {
     .videos {
         padding: 60px 0;
     }
+
+    /* Mobile lightbox caption - full width for consistent experience */
+    .lightbox-caption {
+        font-size: 0.9rem !important;
+        padding: 15px 20px !important;
+        bottom: 0px !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        transform: none !important;
+        text-align: left !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        box-sizing: border-box !important;
+        border-radius: 0 !important;
+    }
 }
 
 @media (max-width: 480px) {
