@@ -532,7 +532,6 @@ h1, h2, h3 {
     letter-spacing: 1.5px;
     border-radius: 3px;
     transition: all 0.3s ease;
-    text-transform: uppercase;
     border: none;
     cursor: pointer;
     font-family: 'Poppins', sans-serif;
