@@ -390,25 +390,38 @@ function initializeLightbox() {
 
 // Story expand/collapse functionality
 function initStoryExpandCollapse() {
+    console.log('Initializing story expand/collapse...');
+    
     const expandBtn = document.getElementById('storyExpandBtn');
     const fullContent = document.getElementById('storyFullContent');
-    const expandText = expandBtn.querySelector('.expand-text');
-    const collapseText = expandBtn.querySelector('.collapse-text');
-
+    
+    console.log('Expand button found:', expandBtn);
+    console.log('Full content found:', fullContent);
+    
     if (!expandBtn || !fullContent) {
-        console.log('Story expand elements not found');
+        console.error('Story expand elements not found - Button:', expandBtn, 'Content:', fullContent);
         return;
     }
+    
+    const expandText = expandBtn.querySelector('.expand-text');
+    const collapseText = expandBtn.querySelector('.collapse-text');
+    
+    console.log('Text elements found - Expand:', expandText, 'Collapse:', collapseText);
 
-    expandBtn.addEventListener('click', function() {
+    expandBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log('Story expand button clicked!');
+        
         const isExpanded = expandBtn.classList.contains('expanded');
+        console.log('Currently expanded:', isExpanded);
         
         if (isExpanded) {
             // Collapse
+            console.log('Collapsing story...');
             expandBtn.classList.remove('expanded');
             fullContent.classList.remove('show');
-            expandText.style.display = 'inline';
-            collapseText.style.display = 'none';
+            if (expandText) expandText.style.display = 'inline';
+            if (collapseText) collapseText.style.display = 'none';
             
             // Smooth scroll to story section
             setTimeout(() => {
@@ -419,19 +432,40 @@ function initStoryExpandCollapse() {
             }, 100);
         } else {
             // Expand
+            console.log('Expanding story...');
             expandBtn.classList.add('expanded');
             fullContent.classList.add('show');
-            expandText.style.display = 'none';
-            collapseText.style.display = 'inline';
+            if (expandText) expandText.style.display = 'none';
+            if (collapseText) collapseText.style.display = 'inline';
         }
     });
     
-    console.log('Story expand/collapse initialized');
+    console.log('Story expand/collapse initialized successfully');
 }
 
-// Initialize story expand/collapse when DOM is ready
+// Try multiple initialization methods for better compatibility
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Content Loaded - initializing story expand');
     initStoryExpandCollapse();
 });
+
+// Fallback initialization
+window.addEventListener('load', function() {
+    console.log('Window loaded - checking story expand initialization');
+    if (!document.getElementById('storyExpandBtn').hasAttribute('data-initialized')) {
+        console.log('Backup initialization triggered');
+        initStoryExpandCollapse();
+        document.getElementById('storyExpandBtn').setAttribute('data-initialized', 'true');
+    }
+});
+
+// Even more backup - initialize after a short delay
+setTimeout(function() {
+    if (document.getElementById('storyExpandBtn') && !document.getElementById('storyExpandBtn').hasAttribute('data-initialized')) {
+        console.log('Delayed initialization triggered');
+        initStoryExpandCollapse();
+        document.getElementById('storyExpandBtn').setAttribute('data-initialized', 'true');
+    }
+}, 500);
 
 console.log('Script loaded successfully!');
