@@ -452,20 +452,74 @@ document.addEventListener('DOMContentLoaded', function() {
 // Fallback initialization
 window.addEventListener('load', function() {
     console.log('Window loaded - checking story expand initialization');
-    if (!document.getElementById('storyExpandBtn').hasAttribute('data-initialized')) {
+    const btn = document.getElementById('storyExpandBtn');
+    if (btn && !btn.hasAttribute('data-initialized')) {
         console.log('Backup initialization triggered');
         initStoryExpandCollapse();
-        document.getElementById('storyExpandBtn').setAttribute('data-initialized', 'true');
+        btn.setAttribute('data-initialized', 'true');
     }
 });
 
 // Even more backup - initialize after a short delay
 setTimeout(function() {
-    if (document.getElementById('storyExpandBtn') && !document.getElementById('storyExpandBtn').hasAttribute('data-initialized')) {
+    const btn = document.getElementById('storyExpandBtn');
+    if (btn && !btn.hasAttribute('data-initialized')) {
         console.log('Delayed initialization triggered');
         initStoryExpandCollapse();
-        document.getElementById('storyExpandBtn').setAttribute('data-initialized', 'true');
+        btn.setAttribute('data-initialized', 'true');
     }
 }, 500);
 
 console.log('Script loaded successfully!');
+
+// Simple inline backup - this should definitely work
+(function() {
+    console.log('Inline backup story expand initializer running...');
+    
+    function setupStoryExpand() {
+        const btn = document.getElementById('storyExpandBtn');
+        const content = document.getElementById('storyFullContent');
+        
+        if (!btn || !content) {
+            console.log('Story elements not ready yet, will retry...');
+            return false;
+        }
+        
+        console.log('Setting up story expand with inline method...');
+        
+        btn.onclick = function() {
+            console.log('Button clicked with inline method!');
+            const isExpanded = btn.classList.contains('expanded');
+            
+            if (isExpanded) {
+                btn.classList.remove('expanded');
+                content.classList.remove('show');
+                content.style.display = 'none';
+                btn.querySelector('.expand-text').style.display = 'inline';
+                btn.querySelector('.collapse-text').style.display = 'none';
+            } else {
+                btn.classList.add('expanded');
+                content.classList.add('show');
+                content.style.display = 'block';
+                btn.querySelector('.expand-text').style.display = 'none';
+                btn.querySelector('.collapse-text').style.display = 'inline';
+            }
+            return false;
+        };
+        
+        console.log('Inline story expand setup complete!');
+        return true;
+    }
+    
+    // Try immediately
+    if (!setupStoryExpand()) {
+        // If not ready, try after DOM content loaded
+        document.addEventListener('DOMContentLoaded', setupStoryExpand);
+        
+        // And also try after page load
+        window.addEventListener('load', setupStoryExpand);
+        
+        // And one more time after a delay
+        setTimeout(setupStoryExpand, 1000);
+    }
+})();
