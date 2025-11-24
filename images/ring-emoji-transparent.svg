@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Ring band - simplified black design -->
+  <ellipse cx="16" cy="20" rx="10" ry="2.5" fill="none" stroke="black" stroke-width="2"/>
+  <ellipse cx="16" cy="18" rx="10" ry="2.5" fill="none" stroke="black" stroke-width="2"/>
+  <path d="M 6 18 L 6 20 M 26 18 L 26 20" stroke="black" stroke-width="2"/>
+  
+  <!-- Diamond - simplified geometric design -->
+  <polygon points="16,6 12,12 16,16 20,12" fill="none" stroke="black" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="14" y1="9" x2="18" y2="9" stroke="black" stroke-width="1"/>
+  <line x1="16" y1="6" x2="16" y2="12" stroke="black" stroke-width="1"/>
+  
+  <!-- Ring setting -->
+  <rect x="14" y="16" width="4" height="2" fill="none" stroke="black" stroke-width="1.5"/>
+</svg>
