@@ -37,6 +37,7 @@ h1, h2, h3 {
     max-width: 100%;
     margin: 0 auto;
     padding: 0;
+    flex: 1;
     background: #fafafa;
     flex: 1;
 }
@@ -1239,12 +1240,17 @@ h1, h2, h3 {
     background: #2c2c2c;
     color: white;
     text-align: center;
-    width: 100%;
+    width: 100vw;
     margin: 0;
+    margin-left: calc(-50vw + 50%);
     flex-shrink: 0;
     display: flex;
     justify-content: center;
     align-items: center;
+    position: relative;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .footer p {
