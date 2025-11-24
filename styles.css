@@ -532,6 +532,7 @@ h1, h2, h3 {
     letter-spacing: 1.5px;
     border-radius: 3px;
     transition: all 0.3s ease;
+    text-transform: none !important;
     border: none;
     cursor: pointer;
     font-family: 'Poppins', sans-serif;
@@ -1330,7 +1331,7 @@ h1, h2, h3 {
 }
 
 .footer-attribution {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Poppins', sans-serif !important;
     font-size: 0.75rem;
     color: #aaa;
     text-align: center;
