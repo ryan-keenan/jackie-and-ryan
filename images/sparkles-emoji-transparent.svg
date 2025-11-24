@@ -1,34 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient for sparkle colors -->
+    <linearGradient id="sparkleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FFA500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF8C00;stop-opacity:1" />
+    </linearGradient>
+    
+    <radialGradient id="sparkleRadial" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#FFFF99;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFA500;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
   <!-- Large sparkle in center -->
-  <g stroke="black" stroke-width="2" fill="black">
+  <g stroke="#CC8400" stroke-width="1" fill="url(#sparkleRadial)">
     <!-- Main star shape -->
     <polygon points="16,4 17.5,10 24,11.5 17.5,13 16,19 14.5,13 8,11.5 14.5,10" stroke-linejoin="round"/>
     <!-- Center highlight -->
-    <circle cx="16" cy="11.5" r="1.5" fill="white"/>
+    <circle cx="16" cy="11.5" r="1.2" fill="#FFFF99"/>
   </g>
   
   <!-- Small sparkle top right -->
-  <g stroke="black" stroke-width="1.5" fill="black">
+  <g stroke="#CC8400" stroke-width="0.8" fill="url(#sparkleGradient)">
     <polygon points="24,8 24.8,10 27,10.8 24.8,11.6 24,14 23.2,11.6 21,10.8 23.2,10" stroke-linejoin="round"/>
-    <circle cx="24" cy="10.8" r="0.8" fill="white"/>
+    <circle cx="24" cy="10.8" r="0.6" fill="#FFFF99"/>
   </g>
   
   <!-- Small sparkle bottom left -->
-  <g stroke="black" stroke-width="1.5" fill="black">
+  <g stroke="#CC8400" stroke-width="0.8" fill="url(#sparkleGradient)">
     <polygon points="8,20 8.8,22 11,22.8 8.8,23.6 8,26 7.2,23.6 5,22.8 7.2,22" stroke-linejoin="round"/>
-    <circle cx="8" cy="22.8" r="0.8" fill="white"/>
+    <circle cx="8" cy="22.8" r="0.6" fill="#FFFF99"/>
   </g>
   
   <!-- Tiny sparkle top left -->
-  <g stroke="black" stroke-width="1" fill="black">
+  <g stroke="#CC8400" stroke-width="0.6" fill="#FFD700">
     <polygon points="6,6 6.5,7.5 8,8 6.5,8.5 6,10 5.5,8.5 4,8 5.5,7.5" stroke-linejoin="round"/>
-    <circle cx="6" cy="8" r="0.4" fill="white"/>
+    <circle cx="6" cy="8" r="0.3" fill="#FFFF99"/>
   </g>
   
   <!-- Tiny sparkle bottom right -->
-  <g stroke="black" stroke-width="1" fill="black">
+  <g stroke="#CC8400" stroke-width="0.6" fill="#FFD700">
     <polygon points="26,24 26.5,25.5 28,26 26.5,26.5 26,28 25.5,26.5 24,26 25.5,25.5" stroke-linejoin="round"/>
-    <circle cx="26" cy="26" r="0.4" fill="white"/>
+    <circle cx="26" cy="26" r="0.3" fill="#FFFF99"/>
   </g>
 </svg>
