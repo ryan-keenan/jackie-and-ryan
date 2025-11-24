@@ -1330,7 +1330,7 @@ h1, h2, h3 {
     letter-spacing: 2px;
 }
 
-.footer-attribution {
+.footer .footer-attribution {
     font-family: 'Poppins', sans-serif !important;
     font-size: 0.75rem;
     color: #aaa;
@@ -1834,7 +1834,7 @@ h1, h2, h3 {
         font-size: 1.9rem !important;
     }
 
-    .footer-attribution {
+    .footer .footer-attribution {
         font-size: 0.7rem;
         margin: 8px 15px 0;
         line-height: 1.3;
