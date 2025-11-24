@@ -520,6 +520,60 @@ h1, h2, h3 {
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Story expand/collapse functionality */
+.story-expand-btn {
+    background: linear-gradient(135deg, #d4a574, #c19660);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 20px auto;
+    box-shadow: 0 4px 15px rgba(212, 165, 116, 0.3);
+}
+
+.story-expand-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
+    background: linear-gradient(135deg, #c19660, #ad8550);
+}
+
+.story-expand-btn:active {
+    transform: translateY(0);
+}
+
+.expand-icon {
+    transition: transform 0.3s ease;
+    font-size: 1.1rem;
+}
+
+.story-expand-btn.expanded .expand-icon {
+    transform: rotate(180deg);
+}
+
+.story-full-content {
+    overflow: hidden;
+    transition: max-height 0.5s ease, opacity 0.3s ease;
+    max-height: 0;
+    opacity: 0;
+}
+
+.story-full-content.show {
+    max-height: 2000px;
+    opacity: 1;
+}
+
+.story-full-content p {
+    margin-top: 20px;
+}
+
 .story-image {
     text-align: center;
     margin-top: 50px;
@@ -1403,6 +1457,12 @@ h1, h2, h3 {
         font-size: 1.05rem;
     }
 
+    /* Story expand button tablet styles */
+    .story-expand-btn {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+
     /* Event Details */
     .agenda, .venue-info, .venue {
         padding: 30px;
@@ -1590,6 +1650,13 @@ h1, h2, h3 {
     .story-text p {
         font-size: 1rem;
         text-align: left;
+    }
+
+    /* Story expand button mobile styles */
+    .story-expand-btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        margin: 15px auto;
     }
 
     /* Event Details */

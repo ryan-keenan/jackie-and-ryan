@@ -388,4 +388,50 @@ function initializeLightbox() {
     console.log('Lightbox initialization complete with swipe support!');
 }
 
+// Story expand/collapse functionality
+function initStoryExpandCollapse() {
+    const expandBtn = document.getElementById('storyExpandBtn');
+    const fullContent = document.getElementById('storyFullContent');
+    const expandText = expandBtn.querySelector('.expand-text');
+    const collapseText = expandBtn.querySelector('.collapse-text');
+
+    if (!expandBtn || !fullContent) {
+        console.log('Story expand elements not found');
+        return;
+    }
+
+    expandBtn.addEventListener('click', function() {
+        const isExpanded = expandBtn.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse
+            expandBtn.classList.remove('expanded');
+            fullContent.classList.remove('show');
+            expandText.style.display = 'inline';
+            collapseText.style.display = 'none';
+            
+            // Smooth scroll to story section
+            setTimeout(() => {
+                const storySection = document.getElementById('story');
+                if (storySection) {
+                    storySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+        } else {
+            // Expand
+            expandBtn.classList.add('expanded');
+            fullContent.classList.add('show');
+            expandText.style.display = 'none';
+            collapseText.style.display = 'inline';
+        }
+    });
+    
+    console.log('Story expand/collapse initialized');
+}
+
+// Initialize story expand/collapse when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initStoryExpandCollapse();
+});
+
 console.log('Script loaded successfully!');
