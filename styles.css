@@ -1647,17 +1647,18 @@ h1, h2, h3 {
     }
 
     .lightbox-caption {
-        font-size: 0.9rem;
-        padding: 15px 20px;
-        bottom: 0px;
+        font-size: 0.9rem !important;
+        padding: 15px 20px !important;
+        bottom: 0px !important;
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
         max-width: none !important;
         transform: none !important;
-        text-align: left;
-        background: rgba(0, 0, 0, 0.8);
-        box-sizing: border-box;
+        text-align: left !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        box-sizing: border-box !important;
+        border-radius: 0 !important;
     }
 
     .lightbox-content {
