@@ -468,7 +468,7 @@ h1, h2, h3 {
 
 .story-content .story-attribution {
     font-family: 'Fraunces', serif !important;
-    font-size: 0.75rem !important;
+    font-size: 0.875rem !important;
     color: #666 !important;
     text-align: center !important;
     margin: 3px 0 !important;
@@ -807,14 +807,18 @@ h1, h2, h3 {
     margin: 0 auto;
 }
 
-.photos-instruction {
-    text-align: center;
-    font-size: 0.95rem;
-    color: #666;
-    font-style: italic;
-    margin-top: -10px;
-    margin-bottom: 30px;
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+.media-content h2 {
+    margin-bottom: 15px !important;
+}
+
+.media-content .photos-instruction {
+    font-family: 'Fraunces', serif !important;
+    font-size: 0.875rem !important;
+    color: #666 !important;
+    text-align: center !important;
+    margin: 0 0 30px 0 !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
 }
 
 .photo-gallery {
