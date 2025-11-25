@@ -51,9 +51,10 @@ h1, h2, h3 {
 
 /* ==================== SCROLL NAVIGATION ==================== */
 .scroll-nav {
-    position: sticky;
-    position: -webkit-sticky; /* Safari compatibility */
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 1000; /* Higher z-index to ensure it stays on top */
     display: flex;
     justify-content: center;
@@ -67,8 +68,6 @@ h1, h2, h3 {
     transition: all 0.3s ease;
     margin: 0;
     width: 100%;
-    left: 0;
-    right: 0;
 }
 
 .nav-link {
@@ -103,8 +102,8 @@ h1, h2, h3 {
 /* ==================== SECTION LAYOUT ==================== */
 .section {
     min-height: auto;
-    padding: 100px 20px 80px;
-    scroll-margin-top: 70px;
+    padding: 120px 20px 80px; /* Extra top padding to account for fixed nav */
+    scroll-margin-top: 90px; /* Adjust scroll margin for fixed nav */
     position: relative;
 }
 
@@ -117,6 +116,7 @@ h1, h2, h3 {
 .home-section {
     background: #fafafa;
     padding: 0;
+    padding-top: 80px; /* Add padding for fixed nav */
     display: block;
     min-height: 100vh;
     position: relative;
