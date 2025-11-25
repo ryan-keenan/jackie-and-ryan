@@ -98,7 +98,7 @@ h1, h2, h3 {
 
 /* ==================== SECTION LAYOUT ==================== */
 .section {
-    min-height: 100vh;
+    min-height: auto;
     padding: 100px 20px 80px;
     scroll-margin-top: 70px;
     position: relative;
@@ -1559,6 +1559,7 @@ h1, h2, h3 {
 
     /* Sections */
     .section {
+        min-height: auto;
         padding: 60px 15px 40px;
     }
 
