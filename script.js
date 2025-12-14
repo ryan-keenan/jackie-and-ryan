@@ -11,7 +11,7 @@ function updateCountdown() {
     console.log('Time difference (ms):', timeDiff);
     
     if (timeDiff > 0) {
-        const days = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         console.log('Days calculated:', days);
         
         const countdownElement = document.getElementById('days');
