@@ -12,10 +12,16 @@ Jackie & Ryan's site, being turned from a single static wedding page into an AI-
 
 ```bash
 npm install
-npm run dev        # Astro dev server
-npm run build      # production build into dist/
-npx astro preview  # serve the production build in the local Cloudflare runtime
+npm run generate-types  # writes worker-configuration.d.ts (binding types; gitignored)
+npm run seed:local      # create the local database and load sample posts (macOS; safe to re-run)
+npm run dev             # Astro dev server with local D1 and R2 emulation
+npm test                # unit tests (Vitest)
+npx astro check         # type check, including .astro files
+npm run build           # production build into dist/
+npx astro preview       # serve the production build in the local Cloudflare runtime
 ```
+
+Local data lives in `.wrangler/state` (gitignored) and is shared by `npm run dev`, `astro preview` and `wrangler --local` commands. Nothing local touches the deployed database or photo storage.
 
 ### Deployment
 - **Journal:** will deploy to Cloudflare. This is not set up yet; see phase 1 of the plan.
@@ -24,7 +30,20 @@ npx astro preview  # serve the production build in the local Cloudflare runtime
 ## Architecture
 
 ### Journal (`src/`)
-- `src/pages/index.astro`: the journal homepage, currently a placeholder that links to `/wedding/`.
+Every page is rendered on request (`output: 'server'`) from D1, so publishing a post needs no rebuild.
+
+- **Bindings** (`wrangler.jsonc`, read in code via `import { env } from 'cloudflare:workers'`):
+  - `DB`: the D1 (Cloudflare SQLite) database. The schema is in `migrations/`.
+  - `PHOTOS`: the R2 bucket of photo files, keyed `photos/<post id>/<photo id>/<size>.jpg`.
+  - Neither has a cloud ID yet; the first `wrangler deploy` creates them.
+- `src/lib/blocks.ts`: the post body format, a JSON array of `heading` / `paragraph` (Markdown) / `photo` / `gallery` / `quote` blocks. `parseBody` validates a body and throws if it references a photo not attached to the post.
+- `src/lib/db.ts`: all D1 queries.
+- `src/lib/markdown.ts`: Markdown rendering with raw HTML disabled.
+- `src/pages/index.astro`: lists published public posts.
+- `src/pages/posts/[slug].astro`: a published public post. Drafts and private posts return 404.
+- `src/pages/media/[...key].ts`: serves display and thumbnail images from R2, only for published public posts. Originals are never served.
+- `src/components/Lightbox.astro`: the full-screen photo viewer, ported from the wedding page. Any element with `data-lightbox-src` opens it.
+- `scripts/seed-local.sh`: local sample data, consisting of one public, one private and one draft post.
 
 ### Wedding page (`public/wedding/`)
 - **index.html:** a single-page layout with a hero section, photo gallery, video embed, and RSVP link.
@@ -46,7 +65,7 @@ All asset paths in the wedding page are relative, so it works from the `/wedding
 
 ## Testing Checklist
 When making changes, verify:
-1. `npm run build` succeeds, and `/` and `/wedding/` load under `npx astro preview`.
+1. `npm test`, `npx astro check` and `npm run build` pass. Under `npx astro preview` with seeded data, `/`, `/posts/sample-taiwan` and `/wedding/` load, while `/posts/sample-private`, `/posts/sample-draft` and their `/media/...` images return 404.
 2. The wedding page lightbox opens and closes properly on photo click.
 3. Mobile responsiveness: hero box positioning and font sizes.
 4. The Vimeo video loads and plays.

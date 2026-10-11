@@ -1,0 +1,59 @@
+---
+import Lightbox from '../../components/Lightbox.astro';
+import PostBody from '../../components/PostBody.astro';
+import Base from '../../layouts/Base.astro';
+import { parseBody } from '../../lib/blocks';
+import { getPhotosForPost, getPublishedPost } from '../../lib/db';
+import { formatTripDates } from '../../lib/format';
+
+const post = await getPublishedPost(Astro.params.slug!, 'public');
+if (!post) return new Response('Not found', { status: 404 });
+
+const photos = await getPhotosForPost(post.id);
+const blocks = parseBody(post.body, photos.map((photo) => photo.id));
+const dates = formatTripDates(post.trip_start, post.trip_end);
+
+Astro.response.headers.set('cache-control', 'public, max-age=300');
+---
+
+<Base title={`${post.title} · Jackie & Ryan`} description={post.summary}>
+	<main>
+		<header class="post-header">
+			{(dates || post.location) && <p class="meta">{[post.location, dates].filter(Boolean).join(' · ')}</p>}
+			<h1>{post.title}</h1>
+			{post.summary && <p class="summary">{post.summary}</p>}
+		</header>
+		<PostBody blocks={blocks} photos={photos} />
+	</main>
+	<Lightbox />
+</Base>
+
+<style>
+	.post-header {
+		max-width: var(--measure);
+		margin: 3rem auto 2.5rem;
+		padding: 0 16px;
+		text-align: center;
+	}
+
+	.meta {
+		margin: 0;
+		font-size: 0.85rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+
+	h1 {
+		margin: 0.5rem 0 1rem;
+		font-size: clamp(2.2rem, 6vw, 3.4rem);
+	}
+
+	.summary {
+		margin: 0;
+		font-family: var(--serif);
+		font-size: 1.25rem;
+		font-style: italic;
+		color: var(--muted);
+	}
+</style>

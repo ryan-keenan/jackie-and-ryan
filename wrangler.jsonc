@@ -10,5 +10,21 @@
 	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	// Posts, photo metadata and AI drafting jobs. No database_id yet: the
+	// first `wrangler deploy` provisions the database and Wrangler records it.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "jackie-and-ryan",
+			"migrations_dir": "migrations"
+		}
+	],
+	// Photo files (original, display and thumbnail sizes), keyed as photos/<post id>/<photo id>/<size>.jpg
+	"r2_buckets": [
+		{
+			"binding": "PHOTOS",
+			"bucket_name": "jackie-and-ryan-photos"
+		}
+	]
 }

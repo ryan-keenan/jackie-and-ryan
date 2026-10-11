@@ -1,0 +1,222 @@
+---
+// Full-screen photo viewer for post pages. Any element with data-lightbox-src
+// opens it; data-lightbox-caption sets the caption. Matches the wedding page's
+// viewer: click to open, ESC or a background click to close, arrow keys and
+// swipes to move between photos, and a "3 / 12" counter.
+---
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
+	<button class="lightbox-close" type="button" aria-label="Close">&times;</button>
+	<button class="lightbox-prev" type="button" aria-label="Previous photo">&#10094;</button>
+	<button class="lightbox-next" type="button" aria-label="Next photo">&#10095;</button>
+	<div class="lightbox-stage">
+		<img class="lightbox-img" alt="" />
+	</div>
+	<p class="lightbox-caption"></p>
+	<p class="lightbox-counter"></p>
+</div>
+
+<script>
+	const lightbox = document.getElementById('lightbox');
+	if (!lightbox) throw new Error('Lightbox markup is missing from the page');
+
+	const img = lightbox.querySelector<HTMLImageElement>('.lightbox-img')!;
+	const caption = lightbox.querySelector<HTMLElement>('.lightbox-caption')!;
+	const counter = lightbox.querySelector<HTMLElement>('.lightbox-counter')!;
+	const triggers = [...document.querySelectorAll<HTMLElement>('[data-lightbox-src]')];
+	let current = 0;
+	let returnFocusTo: HTMLElement | null = null;
+
+	function show(index: number) {
+		current = (index + triggers.length) % triggers.length;
+		const trigger = triggers[current];
+		img.src = trigger.dataset.lightboxSrc!;
+		img.alt = trigger.querySelector('img')?.alt ?? '';
+		caption.textContent = trigger.dataset.lightboxCaption ?? '';
+		caption.hidden = !caption.textContent;
+		counter.textContent = `${current + 1} / ${triggers.length}`;
+	}
+
+	function open(index: number) {
+		returnFocusTo = triggers[index];
+		show(index);
+		lightbox!.hidden = false;
+		document.body.style.overflow = 'hidden';
+		lightbox!.querySelector<HTMLButtonElement>('.lightbox-close')!.focus();
+	}
+
+	function close() {
+		lightbox!.hidden = true;
+		document.body.style.overflow = '';
+		img.removeAttribute('src');
+		returnFocusTo?.focus();
+	}
+
+	triggers.forEach((trigger, index) => {
+		trigger.addEventListener('click', (event) => {
+			event.preventDefault();
+			open(index);
+		});
+	});
+
+	const single = triggers.length < 2;
+	lightbox.querySelector<HTMLElement>('.lightbox-prev')!.hidden = single;
+	lightbox.querySelector<HTMLElement>('.lightbox-next')!.hidden = single;
+
+	lightbox.querySelector('.lightbox-close')!.addEventListener('click', close);
+	lightbox.querySelector('.lightbox-prev')!.addEventListener('click', () => show(current - 1));
+	lightbox.querySelector('.lightbox-next')!.addEventListener('click', () => show(current + 1));
+
+	// A click on the dark background (not the photo or controls) closes the viewer.
+	lightbox.addEventListener('click', (event) => {
+		const target = event.target as HTMLElement;
+		if (target === lightbox || target.classList.contains('lightbox-stage')) close();
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (lightbox!.hidden) return;
+		if (event.key === 'Escape') close();
+		else if (event.key === 'ArrowLeft' && !single) show(current - 1);
+		else if (event.key === 'ArrowRight' && !single) show(current + 1);
+	});
+
+	// Horizontal swipes move between photos; mostly-vertical drags are ignored.
+	const MIN_SWIPE_PX = 50;
+	let startX = 0;
+	let startY = 0;
+	lightbox.addEventListener(
+		'touchstart',
+		(event) => {
+			startX = event.changedTouches[0].clientX;
+			startY = event.changedTouches[0].clientY;
+		},
+		{ passive: true },
+	);
+	lightbox.addEventListener('touchend', (event) => {
+		if (single) return;
+		const dx = event.changedTouches[0].clientX - startX;
+		const dy = event.changedTouches[0].clientY - startY;
+		if (Math.abs(dx) >= MIN_SWIPE_PX && Math.abs(dx) > Math.abs(dy)) {
+			show(dx > 0 ? current - 1 : current + 1);
+		}
+	});
+</script>
+
+<style>
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		z-index: 1000;
+		background: rgba(0, 0, 0, 0.95);
+	}
+
+	.lightbox[hidden] {
+		display: none;
+	}
+
+	.lightbox-stage {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 70px 60px 120px;
+	}
+
+	.lightbox-img {
+		max-width: 100%;
+		max-height: 100%;
+		width: auto;
+		height: auto;
+		object-fit: contain;
+		animation: zoom 0.3s;
+	}
+
+	@keyframes zoom {
+		from {
+			transform: scale(0.9);
+			opacity: 0;
+		}
+		to {
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
+
+	.lightbox button {
+		position: fixed;
+		z-index: 2;
+		border: none;
+		color: #f1f1f1;
+		cursor: pointer;
+		font: inherit;
+	}
+
+	.lightbox button[hidden] {
+		display: none;
+	}
+
+	.lightbox-close {
+		top: 20px;
+		right: 24px;
+		background: none;
+		font-size: 40px !important;
+		line-height: 1;
+	}
+
+	.lightbox-prev,
+	.lightbox-next {
+		top: 50%;
+		transform: translateY(-50%);
+		background: rgba(0, 0, 0, 0.7);
+		font-size: 24px !important;
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+	}
+
+	.lightbox-prev {
+		left: 16px;
+	}
+
+	.lightbox-next {
+		right: 16px;
+	}
+
+	.lightbox button:hover,
+	.lightbox button:focus-visible {
+		color: #bbbbbb;
+	}
+
+	.lightbox-caption {
+		position: fixed;
+		bottom: 40px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: max-content;
+		max-width: min(800px, calc(100vw - 32px));
+		margin: 0;
+		padding: 12px 24px;
+		border-radius: 8px;
+		background: rgba(0, 0, 0, 0.8);
+		color: #f1f1f1;
+		text-align: center;
+		line-height: 1.5;
+	}
+
+	.lightbox-caption[hidden] {
+		display: none;
+	}
+
+	.lightbox-counter {
+		position: fixed;
+		top: 24px;
+		left: 24px;
+		margin: 0;
+		padding: 4px 12px;
+		border-radius: 3px;
+		background: rgba(0, 0, 0, 0.5);
+		color: #f1f1f1;
+		font-size: 0.9rem;
+	}
+</style>

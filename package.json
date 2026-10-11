@@ -10,14 +10,24 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "generate-types": "wrangler types"
+    "generate-types": "wrangler types",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "seed:local": "scripts/seed-local.sh"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",
     "astro": "^7.3.5",
+    "markdown-it": "^15.0.2",
     "wrangler": "^4.147.0"
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@types/markdown-it": "^14.2.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
   }
 }

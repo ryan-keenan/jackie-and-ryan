@@ -1,0 +1,24 @@
+import { describe, expect, it } from 'vitest';
+import { formatTripDates } from './format';
+
+describe('formatTripDates', () => {
+	it('formats single days and missing dates', () => {
+		expect(formatTripDates(null, null)).toBe('');
+		expect(formatTripDates('2026-03-03', null)).toBe('March 3, 2026');
+		expect(formatTripDates('2026-03-03', '2026-03-03')).toBe('March 3, 2026');
+	});
+
+	it('shortens ranges within a month or year', () => {
+		expect(formatTripDates('2026-03-03', '2026-03-12')).toBe('March 3–12, 2026');
+		expect(formatTripDates('2026-03-28', '2026-04-02')).toBe('March 28 – April 2, 2026');
+		expect(formatTripDates('2025-12-28', '2026-01-03')).toBe('December 28, 2025 – January 3, 2026');
+	});
+
+	it('does not shift dates across time zones', () => {
+		expect(formatTripDates('2026-01-01', null)).toBe('January 1, 2026');
+	});
+
+	it('throws on malformed dates instead of rendering "Invalid Date"', () => {
+		expect(() => formatTripDates('March 3', null)).toThrow(/Invalid date/);
+	});
+});

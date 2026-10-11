@@ -1,0 +1,174 @@
+---
+import type { Block } from '../lib/blocks';
+import type { PhotoRow } from '../lib/db';
+import { mediaUrl } from '../lib/format';
+import { renderMarkdown } from '../lib/markdown';
+
+interface Props {
+	blocks: Block[];
+	/** Every photo attached to the post. parseBody has already checked the blocks only reference these. */
+	photos: PhotoRow[];
+}
+
+const { blocks, photos } = Astro.props;
+const photosById = new Map(photos.map((photo) => [photo.id, photo]));
+const photo = (id: string) => photosById.get(id)!;
+---
+
+<div class="post-body">
+	{
+		blocks.map((block) => {
+			switch (block.type) {
+				case 'heading':
+					return <h2>{block.text}</h2>;
+				case 'paragraph':
+					return <div class="prose" set:html={renderMarkdown(block.markdown)} />;
+				case 'quote':
+					return (
+						<blockquote>
+							<p>{block.text}</p>
+							{block.attribution && <cite>{block.attribution}</cite>}
+						</blockquote>
+					);
+				case 'photo': {
+					const p = photo(block.photoId);
+					return (
+						<figure class="wide">
+							<a href={mediaUrl(p.r2_key_display)} data-lightbox-src={mediaUrl(p.r2_key_display)} data-lightbox-caption={p.caption}>
+								<img src={mediaUrl(p.r2_key_display)} alt={p.alt} width={p.width} height={p.height} loading="lazy" decoding="async" />
+							</a>
+							{p.caption && <figcaption>{p.caption}</figcaption>}
+						</figure>
+					);
+				}
+				case 'gallery':
+					return (
+						<div class={`gallery wide count-${block.photoIds.length}`}>
+							{block.photoIds.map((id) => {
+								const p = photo(id);
+								return (
+									<a href={mediaUrl(p.r2_key_display)} data-lightbox-src={mediaUrl(p.r2_key_display)} data-lightbox-caption={p.caption}>
+										<img src={mediaUrl(p.r2_key_thumb)} alt={p.alt} loading="lazy" decoding="async" />
+									</a>
+								);
+							})}
+						</div>
+					);
+			}
+		})
+	}
+</div>
+
+<style>
+	.post-body {
+		max-width: var(--measure);
+		margin: 0 auto;
+		padding: 0 16px;
+		font-size: 1.05rem;
+	}
+
+	.post-body > :global(*) {
+		margin-block: 0 1.5rem;
+	}
+
+	h2 {
+		font-size: 1.6rem;
+		margin-top: 3rem !important;
+	}
+
+	.prose :global(p) {
+		margin: 0 0 1.25rem;
+	}
+
+	.prose :global(a) {
+		color: var(--accent);
+	}
+
+	blockquote {
+		border-left: 3px solid var(--accent-soft);
+		padding-left: 1.25rem;
+		font-family: var(--serif);
+		font-size: 1.3rem;
+		font-style: italic;
+	}
+
+	blockquote p {
+		margin: 0;
+	}
+
+	cite {
+		display: block;
+		margin-top: 0.5rem;
+		font-family: var(--sans);
+		font-size: 0.9rem;
+		font-style: normal;
+		color: var(--muted);
+	}
+
+	/* Photos and galleries run wider than the text column on large screens. */
+	.wide {
+		width: min(64rem, 100vw - 32px);
+		margin-left: 50%;
+		transform: translateX(-50%);
+	}
+
+	figure {
+		margin-block: 2.5rem !important;
+	}
+
+	figure img {
+		width: 100%;
+		max-height: 85vh;
+		object-fit: contain;
+		background: #f0ede8;
+	}
+
+	figcaption {
+		max-width: var(--measure);
+		margin: 0.6rem auto 0;
+		padding: 0 16px;
+		font-size: 0.9rem;
+		color: var(--muted);
+		text-align: center;
+	}
+
+	.gallery {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+		margin-block: 2.5rem !important;
+	}
+
+	.gallery.count-2,
+	.gallery.count-4 {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.gallery img {
+		width: 100%;
+		aspect-ratio: 1;
+		object-fit: cover;
+		transition: opacity 0.2s;
+	}
+
+	.gallery a:hover img {
+		opacity: 0.9;
+	}
+
+	@media (max-width: 600px) {
+		.gallery {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		/* Odd counts in a two-column grid: the first photo spans the full width, so no row has a gap. */
+		.gallery.count-3 a:first-child,
+		.gallery.count-5 a:first-child {
+			grid-column: span 2;
+		}
+
+		.gallery.count-3 a:first-child img,
+		.gallery.count-5 a:first-child img {
+			aspect-ratio: 2;
+		}
+	}
+</style>
