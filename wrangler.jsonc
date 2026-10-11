@@ -8,6 +8,8 @@
 		"directory": "./dist",
 		"binding": "ASSETS"
 	},
+	// Per-version preview URLs are not used; keep them off so only the main URL serves the site.
+	"preview_urls": false,
 	"observability": {
 		"enabled": true
 	},
