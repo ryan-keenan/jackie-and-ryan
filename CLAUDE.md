@@ -3,59 +3,51 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-Static wedding website for Jackie & Ryan's December 21st, 2025 wedding. Pure HTML/CSS/JavaScript with no build process or dependencies.
+Jackie & Ryan's site, being turned from a single static wedding page into an AI-assisted life journal. Admins upload photos and notes, an AI model drafts a blog post, and they review and publish it. The full plan, including architecture and phases, is in `docs/journal-plan.md`.
+
+- **Journal:** an Astro app deployed to Cloudflare Workers using the `@astrojs/cloudflare` adapter (`astro.config.mjs`, `wrangler.jsonc`).
+- **Wedding page (December 21st, 2025):** the original static site, preserved unchanged in `public/wedding/` and served at `/wedding/`.
 
 ## Development Commands
 
-### Local Development
 ```bash
-# Start a local development server (choose one):
-python3 -m http.server 8000
-# OR
-npx serve .
-# OR
-open index.html  # macOS - opens directly in browser
+npm install
+npm run dev        # Astro dev server
+npm run build      # production build into dist/
+npx astro preview  # serve the production build in the local Cloudflare runtime
 ```
 
 ### Deployment
-The site auto-deploys to GitHub Pages when changes are pushed to the `main` branch via `.github/workflows/deploy.yml`.
+- **Journal:** will deploy to Cloudflare. This is not set up yet; see phase 1 of the plan.
+- **GitHub Pages:** `.github/workflows/deploy.yml` deploys the repo root to GitHub Pages on every push to `main`. It still expects the old layout, so do not merge the `journal` branch into `main` until that workflow is retired or updated.
 
 ## Architecture
 
-### File Structure
-- **index.html**: Single-page layout with hero section, photo gallery, video embed, and RSVP link
-- **script.js**: Interactive features including:
-  - Lightbox gallery for photo viewing (click any photo to open)
-  - Fade-in animations on scroll using Intersection Observer
-  - Parallax scrolling effect on hero image
-  - Smooth scroll behavior for anchor links
-- **styles.css**: Responsive design with mobile-first approach, uses CSS Grid for photo gallery
-- **images/**: Wedding photos and favicon
+### Journal (`src/`)
+- `src/pages/index.astro`: the journal homepage, currently a placeholder that links to `/wedding/`.
 
-### Key Interactive Features
+### Wedding page (`public/wedding/`)
+- **index.html:** a single-page layout with a hero section, photo gallery, video embed, and RSVP link.
+- **script.js:**
+  - Lightbox gallery: click any photo to open it; ESC or a click outside closes it.
+  - Fade-in-on-scroll animations, using an Intersection Observer.
+  - Parallax scrolling on the hero image.
+  - Smooth scrolling for anchor links.
+- **styles.css:** a mobile-first responsive layout, with a CSS Grid photo gallery.
+- **images/:** wedding photos and the favicon.
 
-**Lightbox Gallery**:
-- Implementation spans `script.js:1-40` (event handlers and modal control) and `index.html:89-92` (lightbox HTML structure)
-- Click any photo to open, ESC or click outside to close
+All asset paths in the wedding page are relative, so it works from the `/wedding/` subdirectory. The `/wedding` URL redirects to `/wedding/`.
 
-**Scroll Animations**:
-- Intersection Observer in `script.js:61-79` adds fade-in effects to sections
-- CSS classes injected dynamically at `script.js:82-94`
-
-**Hero Section**:
-- Glassmorphism effect with backdrop-filter in `styles.css:69-79`
-- Parallax scrolling via transform in `script.js:96-104`
-
-### External Integrations
-- **Google Fonts**: Playfair Display (headings) and Lato (body text)
-- **Vimeo**: Embedded video player at `index.html:67-73`
-- **Google Forms**: RSVP link at `index.html:27`
-- **Google Maps**: Venue location link at `index.html:23`
+### External Integrations (wedding page)
+- **Google Fonts:** Fraunces (headings) and Poppins (body text).
+- **Vimeo:** the embedded video player.
+- **Google Forms:** the RSVP link.
+- **Google Maps:** the venue location link.
 
 ## Testing Checklist
 When making changes, verify:
-1. Lightbox opens/closes properly on photo click
-2. Mobile responsiveness (hero box positioning, font sizes)
-3. Vimeo video loads and plays
-4. All external links work (RSVP, Maps)
-5. GitHub Pages deployment succeeds after push to main
+1. `npm run build` succeeds, and `/` and `/wedding/` load under `npx astro preview`.
+2. The wedding page lightbox opens and closes properly on photo click.
+3. Mobile responsiveness: hero box positioning and font sizes.
+4. The Vimeo video loads and plays.
+5. All external links work (RSVP, Maps).
