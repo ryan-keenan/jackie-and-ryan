@@ -1,0 +1,112 @@
+---
+import type { MapView } from '../lib/map';
+
+// Map of where a post's photos were taken. MapLibre and the OpenFreeMap tiles
+// load only when the map scrolls near view, so posts without a map, or readers
+// who don't scroll to it, pay nothing.
+
+interface Props {
+	view: MapView;
+}
+
+const { view } = Astro.props;
+---
+
+<figure class="trip-map">
+	<div class="trip-map-canvas" data-map={JSON.stringify(view)} role="img" aria-label="Map of where the photos were taken"></div>
+</figure>
+
+<script>
+	import type { MapView } from '../lib/map';
+
+	// OpenFreeMap: free vector tiles, no account or key. Positron is a pale
+	// base map; it's warmed below to match the site's palette.
+	const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+	const ACCENT = '#b8935f';
+
+	async function render(container: HTMLElement) {
+		const view = JSON.parse(container.dataset.map!) as MapView;
+		const [{ Map, Marker, NavigationControl, setWorkerUrl }, { default: workerUrl }] = await Promise.all([
+			import('maplibre-gl'),
+			// MapLibre looks for its worker next to its own file, which the bundler
+			// moves; give it a worker that Vite builds as a standalone file.
+			import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'),
+			import('maplibre-gl/dist/maplibre-gl.css'),
+		]);
+		setWorkerUrl(workerUrl);
+
+		const map = new Map({
+			container,
+			style: STYLE_URL,
+			center: view.center,
+			zoom: view.zoom ?? 4,
+			// Page scrolling stays normal; two fingers (or Ctrl/Cmd + scroll) move the map.
+			cooperativeGestures: true,
+		});
+		map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+
+		if (view.mode === 'fit') {
+			map.fitBounds(view.bounds, { padding: 60, maxZoom: 13, duration: 0 });
+		}
+
+		map.on('load', () => {
+			if (map.getLayer('background')) map.setPaintProperty('background', 'background-color', '#f6f1ea');
+			if (map.getLayer('water')) map.setPaintProperty('water', 'fill-color', '#d6e2e6');
+			if (map.getLayer('park')) map.setPaintProperty('park', 'fill-color', '#e6ead9');
+		});
+
+		for (const point of view.points) {
+			const dot = document.createElement('div');
+			dot.className = 'trip-map-pin';
+			new Marker({ element: dot }).setLngLat(point).addTo(map);
+		}
+		container.style.setProperty('--pin', ACCENT);
+	}
+
+	for (const container of document.querySelectorAll<HTMLElement>('.trip-map-canvas')) {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					observer.disconnect();
+					render(container).catch((error) => {
+						console.error('Map failed to load', error);
+						container.textContent = 'The map could not be loaded.';
+						container.classList.add('trip-map-error');
+					});
+				}
+			},
+			{ rootMargin: '300px' },
+		);
+		observer.observe(container);
+	}
+</script>
+
+<style>
+	.trip-map {
+		width: min(64rem, 100vw - 32px);
+		margin: 0 auto 2.5rem;
+	}
+
+	.trip-map-canvas {
+		height: clamp(240px, 40vw, 380px);
+		border-radius: 6px;
+		overflow: hidden;
+		background: #f6f1ea;
+	}
+
+	.trip-map-canvas :global(.trip-map-pin) {
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		background: var(--pin, #b8935f);
+		border: 2px solid #fff;
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+	}
+
+	.trip-map-error {
+		display: grid;
+		place-items: center;
+		color: var(--muted);
+		font-size: 0.9rem;
+	}
+</style>

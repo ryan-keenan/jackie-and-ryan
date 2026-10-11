@@ -3,6 +3,7 @@ import Admin from '../../../layouts/Admin.astro';
 import { parseBody, type Block } from '../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin, latestJobForPost } from '../../../lib/db';
 import { formatTakenAt } from '../../../lib/format';
+import { locatedCount, MAP_MODE_LABELS, MAP_MODES } from '../../../lib/map';
 
 const post = await getPostForAdmin(Astro.params.id!);
 if (!post) return new Response('Not found', { status: 404 });
@@ -79,6 +80,15 @@ function jobText(): string {
 						<option value="public" selected={post.visibility === 'public'}>Everyone</option>
 						<option value="private" selected={post.visibility === 'private'}>Family and friends only</option>
 					</select>
+				</div>
+				<div class="span-2">
+					<label for="map_mode">Map under the title</label>
+					<select id="map_mode" name="map_mode">
+						{MAP_MODES.map((mode) => <option value={mode} selected={post.map_mode === mode}>{MAP_MODE_LABELS[mode]}</option>)}
+					</select>
+					<p class="field-hint">
+						{locatedCount(photos)} of {photos.length} photos have a location. Pins are placed to within about 1 km, never the exact spot.
+					</p>
 				</div>
 				<div class="span-4">
 					<label for="author_notes">Notes</label>
@@ -218,6 +228,7 @@ function jobText(): string {
 			trip_start: value('trip_start') || null,
 			trip_end: value('trip_end') || null,
 			visibility: value('visibility'),
+			map_mode: value('map_mode'),
 			author_notes: value('author_notes'),
 		};
 	}
@@ -551,6 +562,12 @@ function jobText(): string {
 
 	.span-2 {
 		grid-column: span 2;
+	}
+
+	.field-hint {
+		margin: 0.35rem 0 0;
+		font-size: 0.8rem;
+		color: var(--muted);
 	}
 
 	.span-4 {

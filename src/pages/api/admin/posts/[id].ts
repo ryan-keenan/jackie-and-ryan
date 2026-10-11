@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { z } from 'astro/zod';
+import { MAP_MODES } from '../../../../lib/map';
 import { updatePostDetails } from '../../../../lib/db';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
 
@@ -17,6 +18,7 @@ const detailsSchema = z
 		trip_start: isoDate.nullable(),
 		trip_end: isoDate.nullable(),
 		location: z.string().trim().max(200),
+		map_mode: z.enum(MAP_MODES),
 	})
 	.partial()
 	.strict()

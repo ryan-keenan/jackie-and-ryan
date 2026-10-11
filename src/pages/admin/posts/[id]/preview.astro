@@ -1,10 +1,12 @@
 ---
 import Lightbox from '../../../../components/Lightbox.astro';
 import PostBody from '../../../../components/PostBody.astro';
+import TripMap from '../../../../components/TripMap.astro';
 import Base from '../../../../layouts/Base.astro';
 import { parseBody } from '../../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin } from '../../../../lib/db';
 import { formatTripDates } from '../../../../lib/format';
+import { mapView } from '../../../../lib/map';
 
 // The post as readers will see it, including drafts and private posts, with
 // images served through the admin route. Shows the last saved version.
@@ -13,6 +15,7 @@ if (!post) return new Response('Not found', { status: 404 });
 const photos = await getPhotosForAdmin(post.id);
 const blocks = parseBody(post.body, photos.map((photo) => photo.id));
 const dates = formatTripDates(post.trip_start, post.trip_end);
+const map = mapView(post.map_mode, photos);
 ---
 
 <Base title={`Preview: ${post.title}`} description={post.summary}>
@@ -26,6 +29,7 @@ const dates = formatTripDates(post.trip_start, post.trip_end);
 			<h1>{post.title}</h1>
 			{post.summary && <p class="summary">{post.summary}</p>}
 		</header>
+		{map && <TripMap view={map} />}
 		<PostBody blocks={blocks} photos={photos} mediaBase="/api/admin/media/" />
 	</main>
 	<Lightbox />

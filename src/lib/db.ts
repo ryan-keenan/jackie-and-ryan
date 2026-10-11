@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import type { MapMode } from './map';
 
 export interface PostRow {
 	id: string;
@@ -12,6 +13,7 @@ export interface PostRow {
 	location: string;
 	cover_photo_id: string | null;
 	body: string;
+	map_mode: MapMode;
 	published_at: string | null;
 }
 
@@ -23,6 +25,8 @@ export interface PhotoRow {
 	width: number;
 	height: number;
 	taken_at: string | null;
+	lat: number | null;
+	lon: number | null;
 	caption: string;
 	alt: string;
 	sort_order: number;
@@ -35,7 +39,7 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
 	const { results } = await env.DB.prepare(
@@ -61,7 +65,7 @@ export async function getPublishedPost(slug: string, visibility: PostRow['visibi
 
 export async function getPhotosForPost(postId: string): Promise<PhotoRow[]> {
 	const { results } = await env.DB.prepare(
-		`SELECT id, post_id, r2_key_display, r2_key_thumb, width, height, taken_at, caption, alt, sort_order
+		`SELECT id, post_id, r2_key_display, r2_key_thumb, width, height, taken_at, lat, lon, caption, alt, sort_order
 		   FROM photos WHERE post_id = ? ORDER BY sort_order, taken_at`,
 	)
 		.bind(postId)
@@ -109,8 +113,6 @@ export interface AdminPost extends PostRow {
 export interface AdminPhoto extends PhotoRow {
 	r2_key_original: string;
 	r2_key_ai: string | null;
-	lat: number | null;
-	lon: number | null;
 	note: string;
 }
 
@@ -167,8 +169,8 @@ export async function slugExists(slug: string): Promise<boolean> {
 export async function createDraftPost(input: { id: string; slug: string; title: string; createdBy: string }): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DB.prepare(
-		`INSERT INTO posts (id, slug, title, status, visibility, created_by, created_at, updated_at)
-		 VALUES (?, ?, ?, 'draft', 'public', ?, ?, ?)`,
+		`INSERT INTO posts (id, slug, title, status, visibility, map_mode, created_by, created_at, updated_at)
+		 VALUES (?, ?, ?, 'draft', 'public', 'country', ?, ?, ?)`,
 	)
 		.bind(input.id, input.slug, input.title, input.createdBy, now, now)
 		.run();
@@ -181,6 +183,7 @@ export interface PostDetailsUpdate {
 	trip_start?: string | null;
 	trip_end?: string | null;
 	location?: string;
+	map_mode?: MapMode;
 }
 
 const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
@@ -190,6 +193,7 @@ const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
 	'trip_start',
 	'trip_end',
 	'location',
+	'map_mode',
 ];
 
 export async function updatePostDetails(id: string, update: PostDetailsUpdate): Promise<boolean> {
