@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTripDates } from './format';
+import { formatTakenAt, formatTripDates } from './format';
 
 describe('formatTripDates', () => {
 	it('formats single days and missing dates', () => {
@@ -20,5 +20,16 @@ describe('formatTripDates', () => {
 
 	it('throws on malformed dates instead of rendering "Invalid Date"', () => {
 		expect(() => formatTripDates('March 3', null)).toThrow(/Invalid date/);
+	});
+});
+
+describe('formatTakenAt', () => {
+	it("shows the camera's local time regardless of offset", () => {
+		expect(formatTakenAt('2026-01-10T19:32:00+08:00')).toBe('Jan 10, 2026, 7:32 PM');
+		expect(formatTakenAt('2026-01-10T19:32:00')).toBe('Jan 10, 2026, 7:32 PM');
+	});
+
+	it('says when a photo has no date', () => {
+		expect(formatTakenAt(null)).toBe('No date in photo');
 	});
 });

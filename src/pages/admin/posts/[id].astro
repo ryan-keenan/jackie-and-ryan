@@ -1,0 +1,450 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getPhotosForAdmin, getPostForAdmin } from '../../../lib/db';
+import { formatTakenAt } from '../../../lib/format';
+
+const post = await getPostForAdmin(Astro.params.id!);
+if (!post) return new Response('Not found', { status: 404 });
+const photos = await getPhotosForAdmin(post.id);
+---
+
+<Admin title={post.title}>
+	<div class="workspace" data-post-id={post.id} data-taken-ats={JSON.stringify(photos.map((photo) => photo.taken_at))}>
+		<header class="post-head">
+			<h1 data-title-display>{post.title}</h1>
+			<span class:list={['badge', post.status]}>{post.status === 'draft' ? 'Draft' : 'Published'}</span>
+			{post.status === 'published' && post.visibility === 'public' && <a href={`/posts/${post.slug}`}>View post</a>}
+		</header>
+
+		<form class="details" id="details-form" novalidate>
+			<div class="grid">
+				<div class="span-2">
+					<label for="title">Title</label>
+					<input id="title" name="title" type="text" required maxlength="200" value={post.title} />
+				</div>
+				<div class="span-2">
+					<label for="location">Where</label>
+					<input id="location" name="location" type="text" maxlength="200" value={post.location} placeholder="e.g. Taipei and Hualien, Taiwan" />
+				</div>
+				<div>
+					<label for="trip_start">From</label>
+					<input id="trip_start" name="trip_start" type="date" value={post.trip_start ?? ''} />
+				</div>
+				<div>
+					<label for="trip_end">To</label>
+					<input id="trip_end" name="trip_end" type="date" value={post.trip_end ?? ''} />
+				</div>
+				<div class="span-2">
+					<label for="visibility">Who can see it</label>
+					<select id="visibility" name="visibility">
+						<option value="public" selected={post.visibility === 'public'}>Everyone</option>
+						<option value="private" selected={post.visibility === 'private'}>Family and friends only</option>
+					</select>
+				</div>
+				<div class="span-4">
+					<label for="author_notes">Notes</label>
+					<textarea id="author_notes" name="author_notes" maxlength="20000" placeholder="What happened? Rough notes are fine: places, who you were with, funny moments, what you ate. The AI will write the post from these and the photos.">{post.author_notes}</textarea>
+				</div>
+			</div>
+			<div class="actions">
+				<button class="button" type="submit">Save details</button>
+				<span class="save-status" role="status" aria-live="polite"></span>
+			</div>
+		</form>
+
+		<section class="photos">
+			<h2>Photos <span class="count" data-photo-count>{photos.length}</span></h2>
+			<label class="dropzone" for="photo-input">
+				<input id="photo-input" type="file" accept="image/*,.heic,.heif" multiple />
+				<strong>Drop photos here</strong> or click to choose. JPEG, PNG, HEIC and WebP all work.
+			</label>
+			<ul class="upload-progress" aria-live="polite"></ul>
+
+			<ul class="photo-grid">
+				{
+					photos.map((photo) => (
+						<li class="photo-card" data-photo-id={photo.id}>
+							<img src={`/api/admin/media/${photo.r2_key_thumb}`} alt="" loading="lazy" />
+							<p class="taken">{formatTakenAt(photo.taken_at)}</p>
+							<input class="photo-note" type="text" maxlength="500" value={photo.note} placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+							<div class="card-actions">
+								<span class="card-status" role="status" />
+								<button class="delete" type="button">Delete</button>
+							</div>
+						</li>
+					))
+				}
+			</ul>
+			<template id="photo-card-template">
+				<li class="photo-card">
+					<img alt="" />
+					<p class="taken"></p>
+					<input class="photo-note" type="text" maxlength="500" placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+					<div class="card-actions">
+						<span class="card-status" role="status"></span>
+						<button class="delete" type="button">Delete</button>
+					</div>
+				</li>
+			</template>
+		</section>
+	</div>
+</Admin>
+
+<script>
+	import { formatTakenAt } from '../../../lib/format';
+	import { tripDateRange } from '../../../lib/photo-meta';
+	import { preparePhoto, runWithLimit, uploadPhoto, type UploadedPhoto } from '../../../scripts/admin-upload';
+
+	const workspace = document.querySelector<HTMLElement>('.workspace')!;
+	const postId = workspace.dataset.postId!;
+	const form = document.querySelector<HTMLFormElement>('#details-form')!;
+	const saveStatus = form.querySelector<HTMLElement>('.save-status')!;
+	const grid = document.querySelector<HTMLUListElement>('.photo-grid')!;
+	const progressList = document.querySelector<HTMLUListElement>('.upload-progress')!;
+	const template = document.querySelector<HTMLTemplateElement>('#photo-card-template')!;
+	const photoCount = document.querySelector<HTMLElement>('[data-photo-count]')!;
+
+	function setStatus(element: HTMLElement, text: string, ok: boolean) {
+		element.textContent = text;
+		element.className = `${element.className.replace(/\s*status-(ok|error)/g, '')} ${ok ? 'status-ok' : 'status-error'}`;
+	}
+
+	async function sendJson(url: string, method: string, body?: unknown): Promise<void> {
+		const response = await fetch(url, {
+			method,
+			headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+			body: body === undefined ? undefined : JSON.stringify(body),
+		});
+		if (!response.ok) {
+			const data = (await response.json().catch(() => ({}))) as { error?: string };
+			throw new Error(data.error ?? `Request failed (HTTP ${response.status})`);
+		}
+	}
+
+	// ---- Post details ----
+
+	function detailsFromForm() {
+		const value = (name: string) => (form.elements.namedItem(name) as HTMLInputElement).value;
+		return {
+			title: value('title').trim(),
+			location: value('location').trim(),
+			trip_start: value('trip_start') || null,
+			trip_end: value('trip_end') || null,
+			visibility: value('visibility'),
+			author_notes: value('author_notes'),
+		};
+	}
+
+	form.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		const details = detailsFromForm();
+		setStatus(saveStatus, 'Saving…', true);
+		try {
+			await sendJson(`/api/admin/posts/${postId}`, 'PATCH', details);
+			document.querySelector('[data-title-display]')!.textContent = details.title;
+			setStatus(saveStatus, 'Saved', true);
+		} catch (error) {
+			setStatus(saveStatus, (error as Error).message, false);
+		}
+	});
+
+	// ---- Photo cards ----
+
+	// Dates of every photo on the post, for filling in the trip dates.
+	const takenAts: (string | null)[] = JSON.parse(workspace.dataset.takenAts!);
+
+	function addCard(photo: UploadedPhoto) {
+		const card = template.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
+		card.dataset.photoId = photo.id;
+		card.querySelector('img')!.src = `/api/admin/media/${photo.r2_key_thumb}`;
+		card.querySelector('.taken')!.textContent = formatTakenAt(photo.taken_at);
+		card.querySelector<HTMLInputElement>('.photo-note')!.value = photo.note;
+		grid.appendChild(card);
+		photoCount.textContent = String(grid.children.length);
+	}
+
+	grid.addEventListener('change', async (event) => {
+		const input = event.target as HTMLInputElement;
+		if (!input.classList.contains('photo-note')) return;
+		const card = input.closest<HTMLElement>('.photo-card')!;
+		const status = card.querySelector<HTMLElement>('.card-status')!;
+		try {
+			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'PATCH', { note: input.value });
+			setStatus(status, 'Note saved', true);
+		} catch (error) {
+			setStatus(status, (error as Error).message, false);
+		}
+	});
+
+	// Delete takes two clicks (no browser confirm dialog): the first arms the button.
+	grid.addEventListener('click', async (event) => {
+		const button = event.target as HTMLButtonElement;
+		if (!button.classList.contains('delete')) return;
+		const card = button.closest<HTMLElement>('.photo-card')!;
+		const status = card.querySelector<HTMLElement>('.card-status')!;
+		if (button.dataset.armed !== 'true') {
+			button.dataset.armed = 'true';
+			button.textContent = 'Really delete?';
+			setTimeout(() => {
+				button.dataset.armed = 'false';
+				button.textContent = 'Delete';
+			}, 4000);
+			return;
+		}
+		button.disabled = true;
+		try {
+			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'DELETE');
+			card.remove();
+			photoCount.textContent = String(grid.children.length);
+		} catch (error) {
+			button.disabled = false;
+			setStatus(status, (error as Error).message, false);
+		}
+	});
+
+	// ---- Uploading ----
+
+	async function fillTripDatesIfEmpty() {
+		const start = form.elements.namedItem('trip_start') as HTMLInputElement;
+		const end = form.elements.namedItem('trip_end') as HTMLInputElement;
+		const range = tripDateRange(takenAts);
+		if (!range || start.value || end.value) return;
+		start.value = range.start;
+		end.value = range.end;
+		await sendJson(`/api/admin/posts/${postId}`, 'PATCH', { trip_start: range.start, trip_end: range.end });
+		setStatus(saveStatus, 'Trip dates filled in from the photos', true);
+	}
+
+	async function uploadFiles(files: File[]) {
+		const rows = new Map<File, HTMLLIElement>();
+		for (const file of files) {
+			const row = document.createElement('li');
+			row.innerHTML = '<span class="name"></span> <span class="state">Waiting</span>';
+			row.querySelector('.name')!.textContent = file.name;
+			progressList.appendChild(row);
+			rows.set(file, row);
+		}
+		const update = (file: File, text: string, ok = true) => setStatus(rows.get(file)!.querySelector('.state')!, text, ok);
+
+		let uploadedCount = 0;
+		// Three at a time keeps the browser responsive while resizing large photos.
+		await runWithLimit(files, 3, async (file) => {
+			try {
+				update(file, 'Preparing…');
+				const prepared = await preparePhoto(file);
+				const uploaded = await uploadPhoto(postId, prepared, (fraction) =>
+					update(file, `Uploading ${Math.round(fraction * 100)}%`),
+				);
+				takenAts.push(uploaded.taken_at);
+				addCard(uploaded);
+				rows.get(file)!.remove();
+				uploadedCount++;
+			} catch (error) {
+				update(file, `Failed: ${(error as Error).message}`, false);
+			}
+		});
+
+		if (uploadedCount > 0) await fillTripDatesIfEmpty().catch((error) => setStatus(saveStatus, error.message, false));
+	}
+
+	const input = document.querySelector<HTMLInputElement>('#photo-input')!;
+	const dropzone = document.querySelector<HTMLElement>('.dropzone')!;
+
+	input.addEventListener('change', () => {
+		if (input.files?.length) uploadFiles([...input.files]);
+		input.value = '';
+	});
+	dropzone.addEventListener('dragover', (event) => {
+		event.preventDefault();
+		dropzone.classList.add('dragging');
+	});
+	dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+	dropzone.addEventListener('drop', (event) => {
+		event.preventDefault();
+		dropzone.classList.remove('dragging');
+		const files = [...(event.dataTransfer?.files ?? [])];
+		if (files.length) uploadFiles(files);
+	});
+</script>
+
+<style>
+	.post-head {
+		display: flex;
+		align-items: baseline;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		margin-bottom: 1.5rem;
+	}
+
+	h1 {
+		margin: 0;
+		font-size: 2rem;
+	}
+
+	h2 {
+		font-size: 1.5rem;
+		margin: 3rem 0 1rem;
+	}
+
+	.count {
+		font-family: var(--sans);
+		font-size: 1rem;
+		color: var(--muted);
+	}
+
+	.badge {
+		padding: 0.1rem 0.5rem;
+		border-radius: 999px;
+		font-size: 0.75rem;
+		background: #eee;
+	}
+
+	.badge.published {
+		background: #e3f1e8;
+		color: #2f7d4f;
+	}
+
+	.details {
+		padding: 1.5rem;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 10px;
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 1rem;
+	}
+
+	.span-2 {
+		grid-column: span 2;
+	}
+
+	.span-4 {
+		grid-column: span 4;
+	}
+
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.save-status {
+		font-size: 0.9rem;
+	}
+
+	.dropzone {
+		display: block;
+		padding: 2.5rem 1rem;
+		border: 2px dashed var(--rule);
+		border-radius: 10px;
+		background: var(--surface);
+		text-align: center;
+		color: var(--muted) !important;
+		font-size: 1rem !important;
+		cursor: pointer;
+		transition: border-color 0.2s, background 0.2s;
+	}
+
+	.dropzone strong {
+		color: var(--text);
+		font-weight: 500;
+	}
+
+	.dropzone:hover,
+	.dropzone.dragging {
+		border-color: var(--accent-soft);
+		background: #fdf9f3;
+	}
+
+	.dropzone input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+	}
+
+	.upload-progress {
+		list-style: none;
+		margin: 1rem 0;
+		padding: 0;
+		font-size: 0.9rem;
+	}
+
+	.upload-progress :global(li) {
+		padding: 0.25rem 0;
+	}
+
+	.upload-progress :global(.name) {
+		color: var(--muted);
+	}
+
+	.photo-grid {
+		list-style: none;
+		margin: 1.5rem 0 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+		gap: 1.25rem;
+	}
+
+	.photo-card img {
+		width: 100%;
+		aspect-ratio: 4 / 3;
+		object-fit: cover;
+		border-radius: 6px;
+		background: #f0ede8;
+	}
+
+	.taken {
+		margin: 0.4rem 0;
+		font-size: 0.8rem;
+		color: var(--muted);
+	}
+
+	.photo-note {
+		font-size: 0.9rem !important;
+		padding: 0.45rem 0.6rem !important;
+	}
+
+	.card-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		margin-top: 0.4rem;
+		min-height: 1.6rem;
+	}
+
+	.card-status {
+		font-size: 0.8rem;
+	}
+
+	.delete {
+		border: none;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 0.8rem;
+		cursor: pointer;
+		text-decoration: underline;
+	}
+
+	.delete[data-armed='true'] {
+		color: #b3261e;
+	}
+
+	@media (max-width: 700px) {
+		.grid {
+			grid-template-columns: 1fr 1fr;
+		}
+
+		.span-2,
+		.span-4 {
+			grid-column: span 2;
+		}
+	}
+</style>

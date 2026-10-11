@@ -1,0 +1,147 @@
+---
+import '../styles/global.css';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+const email = Astro.locals.adminEmail;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex" />
+		<link rel="icon" type="image/svg+xml" href="/wedding/images/sparkles-emoji-transparent.svg" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Poppins:wght@300;400;500&display=swap"
+			rel="stylesheet"
+		/>
+		<title>{title} · Journal admin</title>
+	</head>
+	<body>
+		<header class="admin-header">
+			<a class="admin-title" href="/admin">Journal admin</a>
+			<span class="who">{email}</span>
+			<a href="/" class="view-site">View site</a>
+		</header>
+		<main class="admin-main">
+			<slot />
+		</main>
+	</body>
+</html>
+
+<style is:global>
+	/* Shared controls for admin pages. */
+	.admin-main label {
+		display: block;
+		font-size: 0.85rem;
+		font-weight: 400;
+		color: var(--muted);
+		margin-bottom: 0.3rem;
+	}
+
+	.admin-main input[type='text'],
+	.admin-main input[type='date'],
+	.admin-main select,
+	.admin-main textarea {
+		width: 100%;
+		padding: 0.6rem 0.75rem;
+		border: 1px solid var(--rule);
+		border-radius: 6px;
+		background: var(--surface);
+		color: var(--text);
+		font: inherit;
+		font-size: 1rem;
+	}
+
+	.admin-main textarea {
+		min-height: 12rem;
+		resize: vertical;
+		line-height: 1.6;
+	}
+
+	.admin-main input:focus,
+	.admin-main select:focus,
+	.admin-main textarea:focus {
+		outline: 2px solid var(--accent-soft);
+		outline-offset: 1px;
+	}
+
+	.button {
+		display: inline-block;
+		padding: 0.6rem 1.2rem;
+		border: none;
+		border-radius: 6px;
+		background: var(--accent);
+		color: #fff;
+		font: inherit;
+		font-weight: 400;
+		text-decoration: none;
+		cursor: pointer;
+	}
+
+	.button:hover {
+		background: #a5814f;
+	}
+
+	.button:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+
+	.button.secondary {
+		background: none;
+		border: 1px solid var(--rule);
+		color: var(--text);
+	}
+
+	.status-ok {
+		color: #2f7d4f;
+	}
+
+	.status-error {
+		color: #b3261e;
+	}
+</style>
+
+<style>
+	.admin-header {
+		display: flex;
+		align-items: baseline;
+		gap: 1rem;
+		flex-wrap: wrap;
+		max-width: 64rem;
+		margin: 0 auto;
+		padding: 1.25rem 16px;
+		border-bottom: 1px solid var(--rule);
+	}
+
+	.admin-title {
+		font-family: var(--serif);
+		font-size: 1.3rem;
+		text-decoration: none;
+	}
+
+	.who {
+		color: var(--muted);
+		font-size: 0.85rem;
+	}
+
+	.view-site {
+		margin-left: auto;
+		font-size: 0.9rem;
+		color: var(--muted);
+	}
+
+	.admin-main {
+		max-width: 64rem;
+		margin: 0 auto;
+		padding: 2rem 16px 4rem;
+	}
+</style>

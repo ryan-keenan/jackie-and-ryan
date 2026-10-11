@@ -45,6 +45,25 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 - `src/components/Lightbox.astro`: the full-screen photo viewer, ported from the wedding page. Any element with `data-lightbox-src` opens it.
 - `scripts/seed-local.sh`: local sample data, consisting of one public, one private and one draft post.
 
+### Admin (`/admin`, `/api/admin`)
+- `src/middleware.ts` guards every admin route:
+  - In production it verifies the Cloudflare Access JWT (`src/lib/access.ts`) and requires the email to be in `ADMIN_EMAILS`.
+  - Non-GET requests must come from the same origin.
+  - Responses are marked `no-store`, so drafts and private photos are never cached.
+- **Settings:**
+  - `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are vars in `wrangler.jsonc`.
+  - `ADMIN_EMAILS` is a Worker secret, set with `npx wrangler secret put ADMIN_EMAILS`. It's a secret so the public repo doesn't expose the emails.
+  - If any of these is missing, admin requests fail with an error.
+- **Local dev:** `npm run dev` has no Access in front of it, so it signs you in as `DEV_ADMIN_EMAIL` from `.dev.vars` (gitignored). That code path only exists in dev builds. A `.dev.vars` file needs:
+  ```
+  ADMIN_EMAILS=you@example.com
+  DEV_ADMIN_EMAIL=you@example.com
+  ```
+- **Upload flow:** `src/pages/admin/posts/[id].astro` with `src/scripts/admin-upload.ts`.
+  - **In the browser:** each photo's EXIF date and GPS are read, HEIC is converted where needed, and a 2400px display JPEG and a 600px thumbnail are produced. Re-encoding strips all metadata.
+  - **Upload:** the original plus both JPEGs go to `POST /api/admin/posts/:id/photos`.
+  - **Stored:** originals go to R2 but are never served. GPS is kept only in D1, as context for AI drafting.
+
 ### Wedding page (`public/wedding/`)
 - **index.html:** a single-page layout with a hero section, photo gallery, video embed, and RSVP link.
 - **script.js:**
