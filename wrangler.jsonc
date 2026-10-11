@@ -11,12 +11,12 @@
 	"observability": {
 		"enabled": true
 	},
-	// Posts, photo metadata and AI drafting jobs. No database_id yet: the
-	// first `wrangler deploy` provisions the database and Wrangler records it.
+	// Posts, photo metadata and AI drafting jobs.
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "jackie-and-ryan",
+			"database_id": "ff113e0f-5e13-4943-b9d4-76932370c0f2",
 			"migrations_dir": "migrations"
 		}
 	],

@@ -24,7 +24,7 @@ npx astro preview       # serve the production build in the local Cloudflare run
 Local data lives in `.wrangler/state` (gitignored) and is shared by `npm run dev`, `astro preview` and `wrangler --local` commands. Nothing local touches the deployed database or photo storage.
 
 ### Deployment
-- **Journal:** will deploy to Cloudflare. This is not set up yet; see phase 1 of the plan.
+- **Journal:** run `npm run build && npx wrangler deploy` to deploy to Cloudflare Workers. The test copy is at https://jackie-and-ryan.jackie-and-ryan.workers.dev. jackieandryan.us still points at GitHub Pages.
 - **GitHub Pages:** `.github/workflows/deploy.yml` deploys the repo root to GitHub Pages on every push to `main`. It still expects the old layout, so do not merge the `journal` branch into `main` until that workflow is retired or updated.
 
 ## Architecture
@@ -35,7 +35,7 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 - **Bindings** (`wrangler.jsonc`, read in code via `import { env } from 'cloudflare:workers'`):
   - `DB`: the D1 (Cloudflare SQLite) database. The schema is in `migrations/`.
   - `PHOTOS`: the R2 bucket of photo files, keyed `photos/<post id>/<photo id>/<size>.jpg`.
-  - Neither has a cloud ID yet; the first `wrangler deploy` creates them.
+  - Both exist in Cloudflare. After changing the schema, apply new migrations with `npx wrangler d1 migrations apply DB --remote`.
 - `src/lib/blocks.ts`: the post body format, a JSON array of `heading` / `paragraph` (Markdown) / `photo` / `gallery` / `quote` blocks. `parseBody` validates a body and throws if it references a photo not attached to the post.
 - `src/lib/db.ts`: all D1 queries.
 - `src/lib/markdown.ts`: Markdown rendering with raw HTML disabled.
