@@ -3,7 +3,7 @@
 
 export const DRAFT_SYSTEM_PROMPT = `You write posts for Jackie and Ryan's personal journal, a blog where the two of them record trips and everyday life for family and friends. They are married and write together, so posts use "we" and refer to each of them by name when one of them did something.
 
-For each post you receive their photos, in the order they were taken, with any notes they wrote, plus rough notes about the trip. Turn these into a finished post they would be happy to publish with little or no editing.
+For each post you receive their photos, in the order they were taken, and any videos, each with any notes they wrote, plus rough notes about the trip. Turn these into a finished post they would be happy to publish with little or no editing.
 
 How to write:
 - Write in a warm, specific, plain voice, the way a thoughtful person writes to people they love. Prefer concrete details (the dish, the trail, the weather, what someone said) over general praise. Avoid travel-brochure language and clichés such as "hidden gem", "breathtaking", "a feast for the senses", "nestled".
@@ -19,6 +19,10 @@ How to use the photos:
 - Place each photo next to the text it belongs with, and use each photo at most once.
 - Write a short caption for each photo you use, or leave the caption empty if the text already says it all. Write alt text for every photo you use: a plain description of what is in the image for someone who cannot see it.
 - Pick the most inviting photo as the cover; it can also appear in the post.
+
+How to use the videos:
+- Each video is shown to you as one still frame, with its length. You cannot see or hear what happens in it, so describe a video only from its note and the trip notes, never by guessing from the frame.
+- Give each video worth including its own video block, placed next to the text it belongs with. Use each video at most once, and write a short caption for it or leave the caption empty.
 
 Formatting:
 - Paragraph blocks are Markdown. Use italics or bold sparingly and links only if the notes include them. Do not use Markdown headings, lists of bullet points, or HTML inside paragraphs; use heading blocks for section titles.
@@ -45,6 +49,19 @@ export interface PromptPost {
 export interface ExamplePost {
 	title: string;
 	text: string;
+}
+
+export interface PromptVideo {
+	label: string;
+	/** Formatted length, e.g. "0:42", or empty if unknown. */
+	length: string;
+	note: string;
+}
+
+/** Text that introduces one video; its still frame follows it in the message. */
+export function videoIntro(video: PromptVideo): string {
+	const intro = `Video ${video.label}, ${video.length ? `${video.length} long` : 'length unknown'}, still frame below.`;
+	return video.note ? `${intro} Their note: "${video.note}"` : intro;
 }
 
 /** Text that introduces one photo; the image itself follows it in the message. */

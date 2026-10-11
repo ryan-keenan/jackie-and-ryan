@@ -334,10 +334,17 @@ export async function recentPublishedBodies(excludePostId: string, limit: number
 	return results;
 }
 
-/** Replaces a post's title, summary, cover and body with a generated draft, and sets photo captions. */
+/** Replaces a post's title, summary, cover and body with a generated draft, and sets photo and video captions. */
 export async function saveDraft(
 	postId: string,
-	draft: { title: string; summary: string; coverPhotoId: string; body: string; captions: { photoId: string; caption: string; alt: string }[] },
+	draft: {
+		title: string;
+		summary: string;
+		coverPhotoId: string;
+		body: string;
+		captions: { photoId: string; caption: string; alt: string }[];
+		videoCaptions: { videoId: string; caption: string }[];
+	},
 ): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DB.batch([
@@ -351,6 +358,9 @@ export async function saveDraft(
 				c.photoId,
 				postId,
 			),
+		),
+		...draft.videoCaptions.map((c) =>
+			env.DB.prepare('UPDATE videos SET caption = ? WHERE id = ? AND post_id = ?').bind(c.caption, c.videoId, postId),
 		),
 	]);
 }

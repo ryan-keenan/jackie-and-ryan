@@ -162,6 +162,7 @@ export function playerUrl(playbackHost: string, streamUid: string): string {
 	return `https://${playbackHost}/${streamUid}/iframe?preload=none`;
 }
 
-export function thumbnailUrl(playbackHost: string, streamUid: string, width = 1280): string {
-	return `https://${playbackHost}/${streamUid}/thumbnails/thumbnail.jpg?width=${width}`;
+/** A still frame scaled to fit within maxPx x maxPx, keeping its shape (fit=clip). */
+export function thumbnailUrl(playbackHost: string, streamUid: string, maxPx = 1280): string {
+	return `https://${playbackHost}/${streamUid}/thumbnails/thumbnail.jpg?width=${maxPx}&height=${maxPx}&fit=clip`;
 }

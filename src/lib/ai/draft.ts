@@ -2,13 +2,14 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { BetaContentBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import { blockText } from '../blocks';
-import type { AdminPhoto, AdminPost } from '../db';
-import { DRAFT_SYSTEM_PROMPT, draftRequestText, photoIntro, type ExamplePost } from './prompt';
+import type { AdminPhoto, AdminPost, VideoRow } from '../db';
+import { formatDuration } from '../format';
+import { DRAFT_SYSTEM_PROMPT, draftRequestText, photoIntro, videoIntro, type ExamplePost } from './prompt';
 import { convertDraft, draftOutputSchema, type ConvertedDraft } from './schema';
 
-// Turns a post's photos and notes into a draft with Claude. One request carries
-// every photo (its 1568px AI copy) plus the notes; structured outputs make the
-// reply match draftOutputSchema.
+// Turns a post's photos, videos and notes into a draft with Claude. One request
+// carries every photo (its 1568px AI copy), one still frame per video, and the
+// notes; structured outputs make the reply match draftOutputSchema.
 
 /** Over this many photos the request risks the API's 32MB size limit; ask the admins to trim. */
 export const MAX_DRAFT_PHOTOS = 60;
@@ -46,6 +47,8 @@ export interface DraftInput {
 	/** JPEG bytes of each photo's AI copy, keyed by photo id. */
 	images: Map<string, Uint8Array>;
 	examples: { title: string; body: string }[];
+	/** Ready videos, labeled V1, V2, ... in this order, each with a JPEG still frame. */
+	videos?: { video: VideoRow; still: Uint8Array }[];
 }
 
 export interface DraftResult {
@@ -68,6 +71,10 @@ export function photoLabel(index: number): string {
 	return `P${index + 1}`;
 }
 
+export function videoLabel(index: number): string {
+	return `V${index + 1}`;
+}
+
 /** The user message: each photo introduced by a line of text, then the trip details and notes. */
 export function buildDraftContent(input: DraftInput): BetaContentBlockParam[] {
 	const content: BetaContentBlockParam[] = [];
@@ -85,6 +92,13 @@ export function buildDraftContent(input: DraftInput): BetaContentBlockParam[] {
 			}),
 		});
 		content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: toBase64(bytes) } });
+	});
+	(input.videos ?? []).forEach(({ video, still }, index) => {
+		content.push({
+			type: 'text',
+			text: videoIntro({ label: videoLabel(index), length: formatDuration(video.duration), note: video.note }),
+		});
+		content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: toBase64(still) } });
 	});
 	const examples: ExamplePost[] = input.examples.map((e) => ({ title: e.title, text: blockText(e.body) }));
 	content.push({
@@ -131,9 +145,10 @@ export async function generateDraft(client: Anthropic, config: DraftConfig, inpu
 	if (!response.parsed_output) throw new DraftFailed('Claude returned a draft that could not be read');
 
 	const labels = new Map(input.photos.map((photo, index) => [photoLabel(index), photo.id]));
+	const videoLabels = new Map((input.videos ?? []).map(({ video }, index) => [videoLabel(index), video.id]));
 	let draft: ConvertedDraft;
 	try {
-		draft = convertDraft(response.parsed_output, labels);
+		draft = convertDraft(response.parsed_output, labels, videoLabels);
 	} catch (error) {
 		throw new DraftFailed((error as Error).message);
 	}

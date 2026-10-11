@@ -4,10 +4,13 @@ import {
 	getJob,
 	getPhotosForAdmin,
 	getPostForAdmin,
+	getVideosForPost,
 	recentPublishedBodies,
 	saveDraft,
 	updateJob,
 } from '../db';
+import { AI_MAX_PX } from '../photo-meta';
+import { thumbnailUrl } from '../stream';
 import { DraftFailed, generateDraft, isRetryable, readDraftConfig } from './draft';
 
 // Runs one drafting job from the queue. Called by the queue consumer in
@@ -49,10 +52,29 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 				images.set(photo.id, new Uint8Array(await object.arrayBuffer()));
 			}),
 		);
+		// Every video goes to the AI as a still frame. Unfinished or failed videos stop
+		// the draft rather than being quietly left out of it.
+		const allVideos = await getVideosForPost(post.id);
+		const unfinished = allVideos.filter((v) => v.status === 'uploading' || v.status === 'processing');
+		if (unfinished.length > 0) {
+			throw new DraftFailed(`${unfinished.length} video(s) are still uploading or processing. Wait for them to be ready, then try again.`);
+		}
+		const failed = allVideos.filter((v) => v.status === 'error');
+		if (failed.length > 0) {
+			throw new DraftFailed(`${failed.length} video(s) could not be processed by Stream. Delete them, then try again.`);
+		}
+		const videos = await Promise.all(
+			allVideos.map(async (video) => {
+				const response = await fetch(thumbnailUrl(video.playback_host!, video.stream_uid, AI_MAX_PX));
+				if (!response.ok) throw new Error(`Could not fetch the still frame for video ${video.file_name} (HTTP ${response.status})`);
+				return { video, still: new Uint8Array(await response.arrayBuffer()) };
+			}),
+		);
+
 		const examples = await recentPublishedBodies(post.id, EXAMPLE_POSTS);
 
 		const client = new Anthropic({ apiKey: config.apiKey });
-		const result = await generateDraft(client, config, { post, photos, images, examples });
+		const result = await generateDraft(client, config, { post, photos, images, examples, videos });
 
 		await saveDraft(post.id, {
 			title: result.draft.title,
@@ -60,6 +82,7 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 			coverPhotoId: result.draft.coverPhotoId,
 			body: JSON.stringify(result.draft.body),
 			captions: result.draft.captions,
+			videoCaptions: result.draft.videoCaptions,
 		});
 		await updateJob(jobId, {
 			status: 'succeeded',

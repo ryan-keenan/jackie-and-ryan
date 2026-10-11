@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it, vi } from 'vitest';
-import type { AdminPhoto, AdminPost } from '../db';
+import type { AdminPhoto, AdminPost, VideoRow } from '../db';
 import { buildDraftContent, DraftFailed, generateDraft, MAX_DRAFT_PHOTOS, readDraftConfig, type DraftInput } from './draft';
 import { DRAFT_SYSTEM_PROMPT } from './prompt';
 import { convertDraft, type DraftOutput } from './schema';
@@ -39,6 +39,7 @@ const goodOutput: DraftOutput = {
 		{ type: 'quote', text: 'More dumplings.', attribution: '' },
 	],
 	photo_captions: [{ photo: 'P1', caption: 'Arrival', alt: 'A rainy street at night' }],
+	video_captions: [],
 };
 
 function fakeClient(response: Record<string, unknown>) {
@@ -89,6 +90,30 @@ describe('convertDraft', () => {
 	});
 });
 
+describe('convertDraft with videos', () => {
+	const photos = new Map([['P1', 'id-1']]);
+	const videos = new Map([['V1', 'vid-1']]);
+	const withVideo: DraftOutput = {
+		...goodOutput,
+		cover_photo: 'P1',
+		blocks: [{ type: 'video', video: 'v1' }, { type: 'photo', photo: 'P1' }],
+		video_captions: [{ video: 'V1', caption: 'Climbing' }],
+	};
+
+	it('maps video labels and captions', () => {
+		const draft = convertDraft(withVideo, photos, videos);
+		expect(draft.body[0]).toEqual({ type: 'video', videoId: 'vid-1' });
+		expect(draft.videoCaptions).toEqual([{ videoId: 'vid-1', caption: 'Climbing' }]);
+	});
+
+	it('rejects unknown and repeated videos', () => {
+		expect(() => convertDraft({ ...withVideo, blocks: [{ type: 'video', video: 'V2' }] }, photos, videos)).toThrow(/unknown video "V2"/);
+		expect(() =>
+			convertDraft({ ...withVideo, blocks: [{ type: 'video', video: 'V1' }, { type: 'video', video: 'V1' }] }, photos, videos),
+		).toThrow(/video appears more than once/);
+	});
+});
+
 describe('buildDraftContent', () => {
 	it('introduces each photo with a label, time, location and note, then ends with the trip text', () => {
 		const data = input(2);
@@ -102,6 +127,14 @@ describe('buildDraftContent', () => {
 		expect(last.text).toContain('Night market on day one.');
 		expect(last.text).toContain('Dates: 2026-01-10 to 2026-01-12');
 		expect(last.text).not.toContain('<example_posts>');
+	});
+
+	it('adds each video as an introduction and a still frame after the photos', () => {
+		const data = input(1);
+		data.videos = [{ video: { id: 'vid-1', duration: 42.4, note: 'Jackie on the crux' } as VideoRow, still: new Uint8Array([0xff, 0xd8, 0xff]) }];
+		const content = buildDraftContent(data);
+		expect(content.map((block) => block.type)).toEqual(['text', 'image', 'text', 'image', 'text']);
+		expect(content[2]).toMatchObject({ text: 'Video V1, 0:42 long, still frame below. Their note: "Jackie on the crux"' });
 	});
 });
 
