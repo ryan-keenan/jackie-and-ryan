@@ -1,20 +1,25 @@
 ---
 import type { Block } from '../lib/blocks';
-import type { PhotoRow } from '../lib/db';
+import type { PhotoRow, VideoRow } from '../lib/db';
 import { renderMarkdown } from '../lib/markdown';
+import { playerUrl } from '../lib/stream';
 
 interface Props {
 	blocks: Block[];
 	/** Every photo attached to the post. parseBody has already checked the blocks only reference these. */
 	photos: PhotoRow[];
+	/** Every video attached to the post (parseBody has checked the blocks only reference these). */
+	videos?: VideoRow[];
 	/** Where images are served from: the public route, or the admin route for previews of drafts. */
 	mediaBase?: '/media/' | '/api/admin/media/';
 }
 
-const { blocks, photos, mediaBase = '/media/' } = Astro.props;
+const { blocks, photos, videos = [], mediaBase = '/media/' } = Astro.props;
 const mediaUrl = (key: string) => `${mediaBase}${key}`;
 const photosById = new Map(photos.map((photo) => [photo.id, photo]));
 const photo = (id: string) => photosById.get(id)!;
+const videosById = new Map(videos.map((video) => [video.id, video]));
+const video = (id: string) => videosById.get(id)!;
 ---
 
 <div class="post-body">
@@ -40,6 +45,28 @@ const photo = (id: string) => photosById.get(id)!;
 								<img src={mediaUrl(p.r2_key_display)} alt={p.alt} width={p.width} height={p.height} loading="lazy" decoding="async" />
 							</a>
 							{p.caption && <figcaption>{p.caption}</figcaption>}
+						</figure>
+					);
+				}
+				case 'video': {
+					const v = video(block.videoId);
+					if (v.status !== 'ready' || !v.playback_host) {
+						return <p class="video-pending">This video is still being processed and will appear here when it's ready.</p>;
+					}
+					// Width follows the video's shape, capped so tall phone videos fit on screen.
+					const ratio = (v.width ?? 16) / (v.height ?? 9);
+					return (
+						<figure class="wide">
+							<div class="video-frame" style={`--ratio: ${ratio}`}>
+								<iframe
+									src={playerUrl(v.playback_host, v.stream_uid)}
+									title={v.caption || 'Video'}
+									loading="lazy"
+									allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+									allowfullscreen
+								/>
+							</div>
+							{v.caption && <figcaption>{v.caption}</figcaption>}
 						</figure>
 					);
 				}
@@ -132,6 +159,29 @@ const photo = (id: string) => photosById.get(id)!;
 		font-size: 0.9rem;
 		color: var(--muted);
 		text-align: center;
+	}
+
+	.video-frame {
+		width: min(100%, calc(85vh * var(--ratio)));
+		aspect-ratio: var(--ratio);
+		margin: 0 auto;
+		background: #000;
+	}
+
+	.video-frame iframe {
+		width: 100%;
+		height: 100%;
+		border: 0;
+		display: block;
+	}
+
+	.video-pending {
+		padding: 1.5rem;
+		border: 1px dashed var(--rule);
+		border-radius: 6px;
+		text-align: center;
+		color: var(--muted);
+		font-size: 0.9rem;
 	}
 
 	.gallery {

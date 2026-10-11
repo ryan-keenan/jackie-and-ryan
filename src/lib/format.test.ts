@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTakenAt, formatTripDates } from './format';
+import { formatDuration, formatTakenAt, formatTripDates } from './format';
 
 describe('formatTripDates', () => {
 	it('formats single days and missing dates', () => {
@@ -31,5 +31,15 @@ describe('formatTakenAt', () => {
 
 	it('says when a photo has no date', () => {
 		expect(formatTakenAt(null)).toBe('No date in photo');
+	});
+});
+
+describe('formatDuration', () => {
+	it('formats video lengths', () => {
+		expect(formatDuration(42.4)).toBe('0:42');
+		expect(formatDuration(725)).toBe('12:05');
+		expect(formatDuration(3723)).toBe('1:02:03');
+		expect(formatDuration(null)).toBe('');
+		expect(formatDuration(-1)).toBe('');
 	});
 });

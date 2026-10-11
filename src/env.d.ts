@@ -18,5 +18,8 @@ declare namespace Cloudflare {
 		/** Claude API key for AI drafting (secret). */
 		ANTHROPIC_API_KEY?: string;
 		DRAFT_MODEL?: string;
+		CF_ACCOUNT_ID?: string;
+		/** Cloudflare API token with Stream:Edit, for video uploads (secret). */
+		STREAM_API_TOKEN?: string;
 	}
 }

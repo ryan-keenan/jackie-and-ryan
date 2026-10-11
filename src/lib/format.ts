@@ -50,3 +50,13 @@ export function formatTakenAt(takenAt: string | null): string {
 	if (Number.isNaN(wallClock.getTime())) throw new Error(`Invalid photo timestamp: ${takenAt}`);
 	return takenAtFormat.format(wallClock);
 }
+
+/** "0:42", "12:05" or "1:02:03" for a video length in seconds; empty if unknown. */
+export function formatDuration(seconds: number | null): string {
+	if (seconds === null || !Number.isFinite(seconds) || seconds <= 0) return '';
+	const total = Math.round(seconds);
+	const h = Math.floor(total / 3600);
+	const m = Math.floor((total % 3600) / 60);
+	const s = String(total % 60).padStart(2, '0');
+	return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}

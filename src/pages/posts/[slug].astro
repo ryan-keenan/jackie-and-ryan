@@ -4,7 +4,7 @@ import PostBody from '../../components/PostBody.astro';
 import TripMap from '../../components/TripMap.astro';
 import Base from '../../layouts/Base.astro';
 import { parseBody } from '../../lib/blocks';
-import { getPhotosForPost, getPublishedPost } from '../../lib/db';
+import { getPhotosForPost, getPublishedPost, getVideosForPost } from '../../lib/db';
 import { formatTripDates } from '../../lib/format';
 import { mapView } from '../../lib/map';
 
@@ -12,7 +12,8 @@ const post = await getPublishedPost(Astro.params.slug!, 'public');
 if (!post) return new Response('Not found', { status: 404 });
 
 const photos = await getPhotosForPost(post.id);
-const blocks = parseBody(post.body, photos.map((photo) => photo.id));
+const videos = await getVideosForPost(post.id);
+const blocks = parseBody(post.body, photos.map((photo) => photo.id), videos.map((video) => video.id));
 const dates = formatTripDates(post.trip_start, post.trip_end);
 const map = mapView(post.map_mode, photos);
 
@@ -28,7 +29,7 @@ Astro.response.headers.set('cache-control', 'no-cache');
 			{post.summary && <p class="summary">{post.summary}</p>}
 		</header>
 		{map && <TripMap view={map} />}
-		<PostBody blocks={blocks} photos={photos} />
+		<PostBody blocks={blocks} photos={photos} videos={videos} />
 	</main>
 	<Lightbox />
 </Base>

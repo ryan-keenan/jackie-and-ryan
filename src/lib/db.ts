@@ -391,3 +391,94 @@ export async function updatePhotoText(id: string, text: { note?: string; caption
 		.run();
 	return result.meta.changes > 0;
 }
+
+// ---------------------------------------------------------------------------
+// Videos (Cloudflare Stream; see src/lib/stream.ts).
+
+export type VideoStatus = 'uploading' | 'processing' | 'ready' | 'error';
+
+export interface VideoRow {
+	id: string;
+	post_id: string;
+	stream_uid: string;
+	status: VideoStatus;
+	error: string | null;
+	playback_host: string | null;
+	duration: number | null;
+	width: number | null;
+	height: number | null;
+	file_name: string;
+	note: string;
+	caption: string;
+	sort_order: number;
+	created_at: string;
+}
+
+const VIDEO_COLUMNS =
+	'id, post_id, stream_uid, status, error, playback_host, duration, width, height, file_name, note, caption, sort_order, created_at';
+
+export async function getVideosForPost(postId: string): Promise<VideoRow[]> {
+	const { results } = await env.DB.prepare(`SELECT ${VIDEO_COLUMNS} FROM videos WHERE post_id = ? ORDER BY sort_order, created_at`)
+		.bind(postId)
+		.all<VideoRow>();
+	return results;
+}
+
+export async function getVideo(id: string): Promise<VideoRow | null> {
+	return env.DB.prepare(`SELECT ${VIDEO_COLUMNS} FROM videos WHERE id = ?`).bind(id).first<VideoRow>();
+}
+
+export async function insertVideo(video: { id: string; postId: string; streamUid: string; fileName: string }): Promise<void> {
+	const now = new Date().toISOString();
+	await env.DB.batch([
+		env.DB.prepare(
+			`INSERT INTO videos (id, post_id, stream_uid, status, file_name, sort_order, created_at)
+			 VALUES (?, ?, ?, 'uploading', ?, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM videos WHERE post_id = ?), ?)`,
+		).bind(video.id, video.postId, video.streamUid, video.fileName, video.postId, now),
+		env.DB.prepare('UPDATE posts SET updated_at = ? WHERE id = ?').bind(now, video.postId),
+	]);
+}
+
+export async function updateVideoStatus(
+	id: string,
+	update: {
+		status: VideoStatus;
+		error?: string | null;
+		playback_host?: string | null;
+		duration?: number | null;
+		width?: number | null;
+		height?: number | null;
+	},
+): Promise<void> {
+	await env.DB.prepare(
+		`UPDATE videos SET status = ?, error = ?, playback_host = COALESCE(?, playback_host),
+		        duration = COALESCE(?, duration), width = COALESCE(?, width), height = COALESCE(?, height)
+		  WHERE id = ?`,
+	)
+		.bind(
+			update.status,
+			update.error ?? null,
+			update.playback_host ?? null,
+			update.duration ?? null,
+			update.width ?? null,
+			update.height ?? null,
+			id,
+		)
+		.run();
+}
+
+export async function updateVideoText(id: string, text: { note?: string; caption?: string }): Promise<boolean> {
+	const columns = (['note', 'caption'] as const).filter((column) => text[column] !== undefined);
+	if (columns.length === 0) return true;
+	const result = await env.DB.prepare(`UPDATE videos SET ${columns.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`)
+		.bind(...columns.map((c) => text[c]!), id)
+		.run();
+	return result.meta.changes > 0;
+}
+
+export async function deleteVideoRow(video: Pick<VideoRow, 'id' | 'post_id'>): Promise<void> {
+	await env.DB.batch([
+		env.DB.prepare('DELETE FROM videos WHERE id = ?').bind(video.id),
+		env.DB.prepare('UPDATE posts SET updated_at = ? WHERE id = ?').bind(new Date().toISOString(), video.post_id),
+	]);
+}

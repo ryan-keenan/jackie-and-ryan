@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { z } from 'astro/zod';
 import { bodySchema, parseBody } from '../../../../../lib/blocks';
-import { getPhotosForAdmin, updatePostContent } from '../../../../../lib/db';
+import { getPhotosForAdmin, getVideosForPost, updatePostContent } from '../../../../../lib/db';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../../lib/http';
 
 const contentSchema = z
@@ -17,9 +17,10 @@ export const PUT: APIRoute = ({ params, request }) =>
 	handle(async () => {
 		const content = parseWith(contentSchema, await readJson(request));
 		const photoIds = (await getPhotosForAdmin(params.id!)).map((photo) => photo.id);
+		const videoIds = (await getVideosForPost(params.id!)).map((video) => video.id);
 		const body = JSON.stringify(content.body);
 		try {
-			parseBody(body, photoIds);
+			parseBody(body, photoIds, videoIds);
 		} catch (error) {
 			throw new BadRequest((error as Error).message);
 		}

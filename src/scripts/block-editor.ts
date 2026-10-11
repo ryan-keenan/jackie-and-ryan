@@ -11,6 +11,14 @@ export interface EditorPhoto {
 	thumbUrl: string;
 }
 
+export interface EditorVideo {
+	id: string;
+	/** "Video 1 · IMG_0042.MOV" */
+	label: string;
+	/** A still frame, once Stream has processed the video. */
+	thumbUrl: string | null;
+}
+
 type BlockType = Block['type'];
 
 const TYPE_NAMES: Record<BlockType, string> = {
@@ -18,6 +26,7 @@ const TYPE_NAMES: Record<BlockType, string> = {
 	paragraph: 'Paragraph',
 	photo: 'Photo',
 	gallery: 'Gallery',
+	video: 'Video',
 	quote: 'Quote',
 };
 
@@ -35,15 +44,18 @@ function el<K extends keyof HTMLElementTagNameMap>(
 export class BlockEditor {
 	private blocks: Block[];
 	private readonly photosById: Map<string, EditorPhoto>;
+	private readonly videosById: Map<string, EditorVideo>;
 
 	constructor(
 		private readonly root: HTMLElement,
 		initial: Block[],
 		private readonly photos: EditorPhoto[],
+		private readonly videos: EditorVideo[],
 		private readonly onChange: () => void,
 	) {
 		this.blocks = structuredClone(initial);
 		this.photosById = new Map(photos.map((photo) => [photo.id, photo]));
+		this.videosById = new Map(videos.map((video) => [video.id, video]));
 		this.render();
 	}
 
@@ -51,6 +63,15 @@ export class BlockEditor {
 	addPhoto(photo: EditorPhoto) {
 		this.photos.push(photo);
 		this.photosById.set(photo.id, photo);
+		this.render();
+	}
+
+	/** Adds a newly uploaded video, or updates one (e.g. its still frame once processed). */
+	setVideo(video: EditorVideo) {
+		const index = this.videos.findIndex((v) => v.id === video.id);
+		if (index >= 0) this.videos[index] = video;
+		else this.videos.push(video);
+		this.videosById.set(video.id, video);
 		this.render();
 	}
 
@@ -71,6 +92,22 @@ export class BlockEditor {
 		}
 		select.addEventListener('change', () => select.value && onPick(select.value));
 		return select;
+	}
+
+	private videoSelect(selected: string, onPick: (id: string) => void): HTMLSelectElement {
+		const select = el('select', { className: 'photo-picker' });
+		for (const video of this.videos) {
+			select.appendChild(el('option', { value: video.id, textContent: video.label, selected: video.id === selected }));
+		}
+		select.addEventListener('change', () => select.value && onPick(select.value));
+		return select;
+	}
+
+	private videoThumb(videoId: string): HTMLElement {
+		const video = this.videosById.get(videoId);
+		return video?.thumbUrl
+			? el('img', { className: 'block-thumb', src: video.thumbUrl, alt: video.label })
+			: el('div', { className: 'block-thumb video-processing', textContent: 'Processing…' });
 	}
 
 	private thumb(photoId: string): HTMLImageElement {
@@ -113,6 +150,16 @@ export class BlockEditor {
 						this.changed();
 					}),
 				);
+			case 'video':
+				return el(
+					'div',
+					{ className: 'photo-row' },
+					this.videoThumb(block.videoId),
+					this.videoSelect(block.videoId, (id) => {
+						this.blocks[index] = { type: 'video', videoId: id };
+						this.changed();
+					}),
+				);
 			case 'gallery': {
 				const items = block.photoIds.map((id, position) => {
 					const remove = el('button', { type: 'button', className: 'link', textContent: 'Remove' });
@@ -151,6 +198,7 @@ export class BlockEditor {
 			quote: { type: 'quote', text: 'Something someone said' },
 			photo: first ? { type: 'photo', photoId: first } : null,
 			gallery: this.photos.length >= 2 ? { type: 'gallery', photoIds: [this.photos[0].id, this.photos[1].id] } : null,
+			video: this.videos[0] ? { type: 'video', videoId: this.videos[0].id } : null,
 		};
 		const block = blank[type];
 		if (!block) return;
@@ -188,7 +236,10 @@ export class BlockEditor {
 
 		const addBar = el('div', { className: 'add-bar' }, el('span', { textContent: 'Add:' }));
 		for (const type of Object.keys(TYPE_NAMES) as BlockType[]) {
-			const disabled = (type === 'photo' && this.photos.length < 1) || (type === 'gallery' && this.photos.length < 2);
+			const disabled =
+				(type === 'photo' && this.photos.length < 1) ||
+				(type === 'gallery' && this.photos.length < 2) ||
+				(type === 'video' && this.videos.length < 1);
 			const button = el('button', { type: 'button', className: 'button secondary small', textContent: TYPE_NAMES[type], disabled });
 			button.addEventListener('click', () => this.add(type));
 			addBar.appendChild(button);

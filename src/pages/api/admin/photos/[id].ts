@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { z } from 'astro/zod';
 import { env } from 'cloudflare:workers';
 import { parseBody, referencedPhotoIds } from '../../../../lib/blocks';
-import { deletePhotoRow, getPhotoForAdmin, getPhotosForAdmin, getPostForAdmin, updatePhotoText } from '../../../../lib/db';
+import { deletePhotoRow, getPhotoForAdmin, getPhotosForAdmin, getPostForAdmin, getVideosForPost, updatePhotoText } from '../../../../lib/db';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
 
 const textSchema = z
@@ -30,7 +30,8 @@ export const DELETE: APIRoute = ({ params }) =>
 		// photo used in the post has to be taken out of the post first.
 		const post = await getPostForAdmin(photo.post_id);
 		const photos = await getPhotosForAdmin(photo.post_id);
-		const body = parseBody(post!.body, photos.map((p) => p.id));
+		const videos = await getVideosForPost(photo.post_id);
+		const body = parseBody(post!.body, photos.map((p) => p.id), videos.map((v) => v.id));
 		if (referencedPhotoIds(body).includes(photo.id)) {
 			throw new BadRequest('This photo is used in the post. Remove it from the post before deleting it.', 409);
 		}

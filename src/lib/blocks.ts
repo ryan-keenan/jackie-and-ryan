@@ -11,6 +11,8 @@ export const blockSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('paragraph'), markdown: z.string().min(1) }),
 	z.object({ type: z.literal('photo'), photoId }),
 	z.object({ type: z.literal('gallery'), photoIds: z.array(photoId).min(2).max(6) }),
+	// A Cloudflare Stream video from the post's videos table.
+	z.object({ type: z.literal('video'), videoId: z.string().min(1) }),
 	z.object({
 		type: z.literal('quote'),
 		text: z.string().min(1),
@@ -32,17 +34,27 @@ export function referencedPhotoIds(body: Block[]): string[] {
 	return [...new Set(ids)];
 }
 
+/** Every video id a body references, in order of first appearance. */
+export function referencedVideoIds(body: Block[]): string[] {
+	return [...new Set(body.flatMap((block) => (block.type === 'video' ? [block.videoId] : [])))];
+}
+
 /**
- * Parses a stored body and checks that every photo it references belongs to the
- * post. Throws on any mismatch: a broken body should surface as an error, not
- * render as a post with silently missing photos.
+ * Parses a stored body and checks that every photo and video it references
+ * belongs to the post. Throws on any mismatch: a broken body should surface as
+ * an error, not render as a post with silently missing media.
  */
-export function parseBody(json: string, postPhotoIds: Iterable<string>): Block[] {
+export function parseBody(json: string, postPhotoIds: Iterable<string>, postVideoIds: Iterable<string> = []): Block[] {
 	const body = bodySchema.parse(JSON.parse(json));
-	const known = new Set(postPhotoIds);
-	const missing = referencedPhotoIds(body).filter((id) => !known.has(id));
-	if (missing.length > 0) {
-		throw new Error(`Post body references photos not attached to the post: ${missing.join(', ')}`);
+	const knownPhotos = new Set(postPhotoIds);
+	const missingPhotos = referencedPhotoIds(body).filter((id) => !knownPhotos.has(id));
+	if (missingPhotos.length > 0) {
+		throw new Error(`Post body references photos not attached to the post: ${missingPhotos.join(', ')}`);
+	}
+	const knownVideos = new Set(postVideoIds);
+	const missingVideos = referencedVideoIds(body).filter((id) => !knownVideos.has(id));
+	if (missingVideos.length > 0) {
+		throw new Error(`Post body references videos not attached to the post: ${missingVideos.join(', ')}`);
 	}
 	return body;
 }

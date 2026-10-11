@@ -1,21 +1,32 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
 import { parseBody, type Block } from '../../../lib/blocks';
-import { getPhotosForAdmin, getPostForAdmin, latestJobForPost } from '../../../lib/db';
-import { formatTakenAt } from '../../../lib/format';
+import { getPhotosForAdmin, getPostForAdmin, getVideosForPost, latestJobForPost, type VideoRow } from '../../../lib/db';
+import { formatDuration, formatTakenAt } from '../../../lib/format';
+import { thumbnailUrl } from '../../../lib/stream';
 import { locatedCount, MAP_MODE_LABELS, MAP_MODES } from '../../../lib/map';
 
 const post = await getPostForAdmin(Astro.params.id!);
 if (!post) return new Response('Not found', { status: 404 });
 const photos = await getPhotosForAdmin(post.id);
+const videos = await getVideosForPost(post.id);
 const job = await latestJobForPost(post.id);
+
+const videoThumb = (video: VideoRow) =>
+	video.status === 'ready' && video.playback_host ? thumbnailUrl(video.playback_host, video.stream_uid, 480) : null;
+const videoStatusText: Record<VideoRow['status'], string> = {
+	uploading: 'The upload didn\u2019t finish. Delete this and upload it again.',
+	processing: 'Processing\u2026 this can take a few minutes.',
+	ready: 'Ready',
+	error: 'Stream couldn\u2019t process this video.',
+};
 
 // A body that fails validation is shown as an error and the editor stays
 // disabled, so saving can't silently replace it with an empty post.
 let blocks: Block[] = [];
 let bodyError: string | null = null;
 try {
-	blocks = parseBody(post.body, photos.map((photo) => photo.id));
+	blocks = parseBody(post.body, photos.map((photo) => photo.id), videos.map((video) => video.id));
 } catch (error) {
 	bodyError = (error as Error).message;
 }
@@ -28,6 +39,12 @@ const editorData = {
 	coverPhotoId: post.cover_photo_id,
 	editable: bodyError === null,
 	job: job && { id: job.id, status: job.status },
+	videos: videos.map((video, index) => ({
+		id: video.id,
+		label: `Video ${index + 1} · ${video.file_name || 'untitled'}`,
+		thumbUrl: videoThumb(video),
+	})),
+	processingVideoIds: videos.filter((video) => video.status === 'processing').map((video) => video.id),
 	photos: photos.map((photo, index) => ({
 		id: photo.id,
 		label: `Photo ${index + 1} · ${formatTakenAt(photo.taken_at)}`,
@@ -104,8 +121,8 @@ function jobText(): string {
 		<section class="photos">
 			<h2>Photos <span class="count" data-photo-count>{photos.length}</span></h2>
 			<label class="dropzone" for="photo-input">
-				<input id="photo-input" type="file" accept="image/*,.heic,.heif" multiple />
-				<strong>Drop photos here</strong> or click to choose. JPEG, PNG, HEIC and WebP all work.
+				<input id="photo-input" type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4,.m4v" multiple />
+				<strong>Drop photos and videos here</strong> or click to choose. Photos: JPEG, PNG, HEIC or WebP. Videos: anything your phone records, up to 30 minutes.
 			</label>
 			<ul class="upload-progress" aria-live="polite"></ul>
 
@@ -144,6 +161,42 @@ function jobText(): string {
 						<span class="card-status" role="status"></span>
 						<button class="cover" type="button" data-cover="false">Make cover</button>
 						<button class="delete" type="button">Delete</button>
+					</div>
+				</li>
+			</template>
+
+			<h3 class="videos-head" hidden={videos.length === 0}>Videos <span class="count" data-video-count>{videos.length}</span></h3>
+			<ul class="video-list">
+				{
+					videos.map((video) => (
+						<li class="video-card" data-video-id={video.id} data-status={video.status}>
+							{videoThumb(video) ? <img class="video-thumb" src={videoThumb(video)} alt="" /> : <div class="video-thumb placeholder">Video</div>}
+							<div class="video-body">
+								<p class="video-name">{video.file_name || 'Untitled video'} <span class="video-duration">{formatDuration(video.duration)}</span></p>
+								<p class:list={['video-state', (video.status === 'error' || video.status === 'uploading') && 'status-error']}>{video.status === 'error' && video.error ? `${videoStatusText.error} ${video.error}` : videoStatusText[video.status]}</p>
+								<input class="video-text" data-field="note" type="text" maxlength="500" value={video.note} placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
+								<input class="video-text" data-field="caption" type="text" maxlength="500" value={video.caption} placeholder="Caption shown under the video" aria-label="Caption" />
+								<div class="card-actions">
+									<span class="card-status" role="status" />
+									<button class="delete" type="button">Delete</button>
+								</div>
+							</div>
+						</li>
+					))
+				}
+			</ul>
+			<template id="video-card-template">
+				<li class="video-card" data-status="uploading">
+					<div class="video-thumb placeholder">Video</div>
+					<div class="video-body">
+						<p class="video-name"><span class="name"></span> <span class="video-duration"></span></p>
+						<p class="video-state">Starting upload…</p>
+						<input class="video-text" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
+						<input class="video-text" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the video" aria-label="Caption" />
+						<div class="card-actions">
+							<span class="card-status" role="status"></span>
+							<button class="delete" type="button">Delete</button>
+						</div>
 					</div>
 				</li>
 			</template>
@@ -190,7 +243,10 @@ function jobText(): string {
 	import { tripDateRange } from '../../../lib/photo-meta';
 	import type { Block } from '../../../lib/blocks';
 	import { preparePhoto, runWithLimit, uploadPhoto, type UploadedPhoto } from '../../../scripts/admin-upload';
-	import { BlockEditor, type EditorPhoto } from '../../../scripts/block-editor';
+	import { BlockEditor, type EditorPhoto, type EditorVideo } from '../../../scripts/block-editor';
+	import { uploadVideo, type VideoState } from '../../../scripts/video-upload';
+	import { formatDuration } from '../../../lib/format';
+	import { thumbnailUrl } from '../../../lib/stream';
 
 	const workspace = document.querySelector<HTMLElement>('.workspace')!;
 	const postId = workspace.dataset.postId!;
@@ -355,7 +411,7 @@ function jobText(): string {
 	const dropzone = document.querySelector<HTMLElement>('.dropzone')!;
 
 	input.addEventListener('change', () => {
-		if (input.files?.length) uploadFiles([...input.files]);
+		if (input.files?.length) uploadMedia([...input.files]);
 		input.value = '';
 	});
 	dropzone.addEventListener('dragover', (event) => {
@@ -367,7 +423,7 @@ function jobText(): string {
 		event.preventDefault();
 		dropzone.classList.remove('dragging');
 		const files = [...(event.dataTransfer?.files ?? [])];
-		if (files.length) uploadFiles(files);
+		if (files.length) uploadMedia(files);
 	});
 	// ---- The post: drafting, editing and publishing ----
 
@@ -380,6 +436,8 @@ function jobText(): string {
 		editable: boolean;
 		job: { id: string; status: string } | null;
 		photos: EditorPhoto[];
+		videos: EditorVideo[];
+		processingVideoIds: string[];
 	}
 
 	const data = JSON.parse(document.getElementById('editor-data')!.textContent!) as EditorData;
@@ -401,7 +459,7 @@ function jobText(): string {
 	}
 
 	const editor: BlockEditor | null = data.editable
-		? new BlockEditor(document.querySelector<HTMLElement>('#block-editor')!, data.blocks, data.photos, markDirty)
+		? new BlockEditor(document.querySelector<HTMLElement>('#block-editor')!, data.blocks, data.photos, data.videos, markDirty)
 		: null;
 	summaryInput.addEventListener('input', markDirty);
 	window.addEventListener('beforeunload', (event) => {
@@ -508,6 +566,136 @@ function jobText(): string {
 
 	if (data.job && (data.job.status === 'queued' || data.job.status === 'running')) waitForDraft(data.job.id);
 
+
+	// ---- Videos ----
+
+	const videoList = document.querySelector<HTMLUListElement>('.video-list')!;
+	const videoTemplate = document.querySelector<HTMLTemplateElement>('#video-card-template')!;
+	const videosHead = document.querySelector<HTMLElement>('.videos-head')!;
+	const videoCount = document.querySelector<HTMLElement>('[data-video-count]')!;
+
+	function isVideoFile(file: File): boolean {
+		return file.type.startsWith('video/') || /\.(mov|mp4|m4v|webm)$/i.test(file.name);
+	}
+
+	/** Splits a drop or file choice into photos (resized in the browser) and videos (sent to Stream). */
+	function uploadMedia(files: File[]) {
+		const videos = files.filter(isVideoFile);
+		const photos = files.filter((file) => !isVideoFile(file));
+		if (photos.length) uploadFiles(photos);
+		for (const file of videos) startVideoUpload(file);
+	}
+
+	function updateVideoCount() {
+		videoCount.textContent = String(videoList.children.length);
+		videosHead.hidden = videoList.children.length === 0;
+	}
+
+	function showVideoState(card: HTMLElement, video: VideoState) {
+		card.dataset.status = video.status;
+		const state = card.querySelector<HTMLElement>('.video-state')!;
+		const messages: Record<VideoState['status'], string> = {
+			uploading: 'Uploading…',
+			processing: 'Processing… this can take a few minutes.',
+			ready: 'Ready',
+			error: `Stream couldn't process this video. ${video.error ?? ''}`,
+		};
+		setStatus(state, messages[video.status], video.status !== 'error');
+		card.querySelector('.video-duration')!.textContent = formatDuration(video.duration);
+		if (video.status === 'ready' && video.playback_host) {
+			const thumb = thumbnailUrl(video.playback_host, video.stream_uid, 480);
+			const img = document.createElement('img');
+			img.className = 'video-thumb';
+			img.src = thumb;
+			img.alt = '';
+			card.querySelector('.video-thumb')!.replaceWith(img);
+			const index = [...videoList.children].indexOf(card);
+			editor?.setVideo({ id: video.id, label: `Video ${index + 1} · ${video.file_name || 'untitled'}`, thumbUrl: thumb });
+		}
+	}
+
+	/** Checks a processing video every 10 seconds until Stream finishes with it. */
+	async function watchVideo(card: HTMLElement, videoId: string) {
+		for (;;) {
+			await sleep(10_000);
+			const response = await fetch(`/api/admin/videos/${videoId}`);
+			if (!response.ok) {
+				setStatus(card.querySelector('.video-state')!, `Couldn't check processing (HTTP ${response.status}). Reload to retry.`, false);
+				return;
+			}
+			const video = (await response.json()) as VideoState;
+			showVideoState(card, video);
+			if (video.status === 'ready' || video.status === 'error') return;
+		}
+	}
+
+	function startVideoUpload(file: File) {
+		const card = videoTemplate.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
+		card.querySelector('.name')!.textContent = file.name;
+		videoList.appendChild(card);
+		updateVideoCount();
+		const state = card.querySelector<HTMLElement>('.video-state')!;
+
+		uploadVideo(postId, file, {
+			onCreated: (videoId) => {
+				card.dataset.videoId = videoId;
+				const index = [...videoList.children].indexOf(card);
+				editor?.setVideo({ id: videoId, label: `Video ${index + 1} · ${file.name}`, thumbUrl: null });
+			},
+			onProgress: (fraction) => setStatus(state, `Uploading ${Math.round(fraction * 100)}%`, true),
+		})
+			.then((video) => {
+				showVideoState(card, video);
+				return watchVideo(card, video.id);
+			})
+			.catch((error: Error) => setStatus(state, `Upload failed: ${error.message}`, false));
+	}
+
+	videoList.addEventListener('change', async (event) => {
+		const input = event.target as HTMLInputElement;
+		if (!input.classList.contains('video-text')) return;
+		const card = input.closest<HTMLElement>('.video-card')!;
+		const status = card.querySelector<HTMLElement>('.card-status')!;
+		if (!card.dataset.videoId) return setStatus(status, 'Wait for the upload to start', false);
+		try {
+			await sendJson(`/api/admin/videos/${card.dataset.videoId}`, 'PATCH', { [input.dataset.field!]: input.value });
+			setStatus(status, input.dataset.field === 'note' ? 'Note saved' : 'Caption saved', true);
+		} catch (error) {
+			setStatus(status, (error as Error).message, false);
+		}
+	});
+
+	// Two clicks to delete, as with photos.
+	videoList.addEventListener('click', async (event) => {
+		const button = event.target as HTMLButtonElement;
+		if (!button.classList.contains('delete')) return;
+		const card = button.closest<HTMLElement>('.video-card')!;
+		const status = card.querySelector<HTMLElement>('.card-status')!;
+		if (!card.dataset.videoId) return setStatus(status, 'Wait for the upload to start', false);
+		if (button.dataset.armed !== 'true') {
+			button.dataset.armed = 'true';
+			button.textContent = 'Really delete?';
+			setTimeout(() => {
+				button.dataset.armed = 'false';
+				button.textContent = 'Delete';
+			}, 4000);
+			return;
+		}
+		button.disabled = true;
+		try {
+			await sendJson(`/api/admin/videos/${card.dataset.videoId}`, 'DELETE');
+			card.remove();
+			updateVideoCount();
+		} catch (error) {
+			button.disabled = false;
+			setStatus(status, (error as Error).message, false);
+		}
+	});
+
+	for (const videoId of data.processingVideoIds) {
+		const card = videoList.querySelector<HTMLElement>(`[data-video-id="${videoId}"]`);
+		if (card) watchVideo(card, videoId);
+	}
 </script>
 
 <style>
@@ -889,6 +1077,77 @@ function jobText(): string {
 		font-size: 0.8rem;
 	}
 
+	/* ---- Videos ---- */
+
+	.videos-head {
+		margin: 2.5rem 0 1rem;
+		font-size: 1.2rem;
+	}
+
+	.videos-head[hidden] {
+		display: none;
+	}
+
+	.video-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 1rem;
+	}
+
+	.video-list :global(.video-card) {
+		display: grid;
+		grid-template-columns: 12rem 1fr;
+		gap: 1rem;
+		align-items: start;
+	}
+
+	.video-list :global(.video-thumb) {
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		object-fit: cover;
+		border-radius: 6px;
+		background: #2c2c2c;
+	}
+
+	.video-list :global(.video-thumb.placeholder) {
+		display: grid;
+		place-items: center;
+		color: #ddd;
+		font-size: 0.85rem;
+	}
+
+	.video-list :global(.video-name) {
+		margin: 0;
+		font-weight: 400;
+		word-break: break-all;
+	}
+
+	.video-list :global(.video-duration) {
+		color: var(--muted);
+		font-size: 0.85rem;
+	}
+
+	.video-list :global(.video-state) {
+		margin: 0.2rem 0 0.5rem;
+		font-size: 0.85rem;
+	}
+
+	.video-list :global(.video-text) {
+		margin-bottom: 0.4rem;
+		font-size: 0.9rem !important;
+		padding: 0.45rem 0.6rem !important;
+	}
+
+	#block-editor :global(.video-processing) {
+		display: grid;
+		place-items: center;
+		color: #ddd;
+		background: #2c2c2c;
+		font-size: 0.8rem;
+	}
+
 	@media (max-width: 700px) {
 		.grid {
 			grid-template-columns: 1fr 1fr;
@@ -897,6 +1156,10 @@ function jobText(): string {
 		.span-2,
 		.span-4 {
 			grid-column: span 2;
+		}
+
+		.video-list :global(.video-card) {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
