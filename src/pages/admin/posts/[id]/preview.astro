@@ -1,0 +1,71 @@
+---
+import Lightbox from '../../../../components/Lightbox.astro';
+import PostBody from '../../../../components/PostBody.astro';
+import Base from '../../../../layouts/Base.astro';
+import { parseBody } from '../../../../lib/blocks';
+import { getPhotosForAdmin, getPostForAdmin } from '../../../../lib/db';
+import { formatTripDates } from '../../../../lib/format';
+
+// The post as readers will see it, including drafts and private posts, with
+// images served through the admin route. Shows the last saved version.
+const post = await getPostForAdmin(Astro.params.id!);
+if (!post) return new Response('Not found', { status: 404 });
+const photos = await getPhotosForAdmin(post.id);
+const blocks = parseBody(post.body, photos.map((photo) => photo.id));
+const dates = formatTripDates(post.trip_start, post.trip_end);
+---
+
+<Base title={`Preview: ${post.title}`} description={post.summary}>
+	<p class="preview-banner">
+		Preview of the last saved version{post.status === 'draft' ? ' (not published yet)' : ''}.
+		<a href={`/admin/posts/${post.id}`}>Back to editing</a>
+	</p>
+	<main>
+		<header class="post-header">
+			{(dates || post.location) && <p class="meta">{[post.location, dates].filter(Boolean).join(' · ')}</p>}
+			<h1>{post.title}</h1>
+			{post.summary && <p class="summary">{post.summary}</p>}
+		</header>
+		<PostBody blocks={blocks} photos={photos} mediaBase="/api/admin/media/" />
+	</main>
+	<Lightbox />
+</Base>
+
+<style>
+	.preview-banner {
+		margin: 0;
+		padding: 0.6rem 16px;
+		background: #fdf3e2;
+		color: #7a5a2a;
+		text-align: center;
+		font-size: 0.9rem;
+	}
+
+	.post-header {
+		max-width: var(--measure);
+		margin: 3rem auto 2.5rem;
+		padding: 0 16px;
+		text-align: center;
+	}
+
+	.meta {
+		margin: 0;
+		font-size: 0.85rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+
+	h1 {
+		margin: 0.5rem 0 1rem;
+		font-size: clamp(2.2rem, 6vw, 3.4rem);
+	}
+
+	.summary {
+		margin: 0;
+		font-family: var(--serif);
+		font-size: 1.25rem;
+		font-style: italic;
+		color: var(--muted);
+	}
+</style>

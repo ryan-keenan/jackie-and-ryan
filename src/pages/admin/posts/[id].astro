@@ -1,11 +1,50 @@
 ---
 import Admin from '../../../layouts/Admin.astro';
-import { getPhotosForAdmin, getPostForAdmin } from '../../../lib/db';
+import { parseBody, type Block } from '../../../lib/blocks';
+import { getPhotosForAdmin, getPostForAdmin, latestJobForPost } from '../../../lib/db';
 import { formatTakenAt } from '../../../lib/format';
 
 const post = await getPostForAdmin(Astro.params.id!);
 if (!post) return new Response('Not found', { status: 404 });
 const photos = await getPhotosForAdmin(post.id);
+const job = await latestJobForPost(post.id);
+
+// A body that fails validation is shown as an error and the editor stays
+// disabled, so saving can't silently replace it with an empty post.
+let blocks: Block[] = [];
+let bodyError: string | null = null;
+try {
+	blocks = parseBody(post.body, photos.map((photo) => photo.id));
+} catch (error) {
+	bodyError = (error as Error).message;
+}
+
+const editorData = {
+	postId: post.id,
+	status: post.status,
+	blocks,
+	summary: post.summary,
+	coverPhotoId: post.cover_photo_id,
+	editable: bodyError === null,
+	job: job && { id: job.id, status: job.status },
+	photos: photos.map((photo, index) => ({
+		id: photo.id,
+		label: `Photo ${index + 1} · ${formatTakenAt(photo.taken_at)}`,
+		thumbUrl: `/api/admin/media/${photo.r2_key_thumb}`,
+	})),
+};
+// Embedded as JSON in a <script> tag; escaping "<" keeps text in a post from closing the script tag early.
+const editorJson = JSON.stringify(editorData).replace(/</g, '\\u003c');
+
+function jobText(): string {
+	if (!job) return '';
+	if (job.status === 'queued' || job.status === 'running') {
+		return job.error ? `Writing a draft… ${job.error}` : 'Writing a draft… this usually takes a minute or two.';
+	}
+	if (job.status === 'failed') return `The last draft failed: ${job.error}`;
+	const tokens = job.input_tokens !== null ? ` · ${job.input_tokens.toLocaleString()} in / ${job.output_tokens?.toLocaleString()} out tokens` : '';
+	return `Last drafted by ${job.model}${tokens}`;
+}
 ---
 
 <Admin title={post.title}>
@@ -66,9 +105,15 @@ const photos = await getPhotosForAdmin(post.id);
 						<li class="photo-card" data-photo-id={photo.id}>
 							<img src={`/api/admin/media/${photo.r2_key_thumb}`} alt="" loading="lazy" />
 							<p class="taken">{formatTakenAt(photo.taken_at)}</p>
-							<input class="photo-note" type="text" maxlength="500" value={photo.note} placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+							<input class="photo-text" data-field="note" type="text" maxlength="500" value={photo.note} placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+							<details class="caption-fields">
+								<summary>Caption and alt text</summary>
+								<input class="photo-text" data-field="caption" type="text" maxlength="500" value={photo.caption} placeholder="Caption shown under the photo" aria-label="Caption" />
+								<input class="photo-text" data-field="alt" type="text" maxlength="500" value={photo.alt} placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
+							</details>
 							<div class="card-actions">
 								<span class="card-status" role="status" />
+								<button class="cover" type="button" data-cover={String(photo.id === post.cover_photo_id)}>{photo.id === post.cover_photo_id ? 'Cover photo' : 'Make cover'}</button>
 								<button class="delete" type="button">Delete</button>
 							</div>
 						</li>
@@ -79,13 +124,53 @@ const photos = await getPhotosForAdmin(post.id);
 				<li class="photo-card">
 					<img alt="" />
 					<p class="taken"></p>
-					<input class="photo-note" type="text" maxlength="500" placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+					<input class="photo-text" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+					<details class="caption-fields">
+						<summary>Caption and alt text</summary>
+						<input class="photo-text" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the photo" aria-label="Caption" />
+						<input class="photo-text" data-field="alt" type="text" maxlength="500" placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
+					</details>
 					<div class="card-actions">
 						<span class="card-status" role="status"></span>
+						<button class="cover" type="button" data-cover="false">Make cover</button>
 						<button class="delete" type="button">Delete</button>
 					</div>
 				</li>
 			</template>
+		</section>
+
+		<section class="post-section">
+			<h2>The post</h2>
+			<p class="hint">
+				When the details and photos are ready, generate a draft. You can edit it below, preview it, and publish when you're
+				happy. Generating again replaces the current text.
+			</p>
+			<div class="draft-bar">
+				<button class="button" type="button" id="generate">{blocks.length ? 'Regenerate draft' : 'Generate draft'}</button>
+				<span class:list={['draft-status', job?.status === 'failed' && 'status-error']} role="status" aria-live="polite">{jobText()}</span>
+			</div>
+			{bodyError && <p class="status-error">The saved post can't be shown in the editor: {bodyError}</p>}
+
+			<div class="editor" hidden={blocks.length === 0}>
+				<div class="editor-head">
+					<label for="summary">Summary (shown under the title and on the homepage)</label>
+					<textarea id="summary" rows="2" maxlength="500">{post.summary}</textarea>
+				</div>
+				<div id="block-editor"></div>
+			</div>
+
+			<div class="publish-bar">
+				<button class="button secondary" type="button" id="save-post" disabled>Save post</button>
+				<a class="button secondary" href={`/admin/posts/${post.id}/preview`} target="_blank" id="preview-link" hidden={blocks.length === 0}>Preview</a>
+				<button class="button" type="button" id="publish" data-published={String(post.status === 'published')} hidden={blocks.length === 0}>{post.status === 'published' ? 'Unpublish' : 'Publish'}</button>
+				<span class="post-status" role="status" aria-live="polite"></span>
+			</div>
+			{
+				post.visibility === 'private' && (
+					<p class="hint">This post is set to family and friends only. Private posts can't be viewed on the site until family logins are added.</p>
+				)
+			}
+			<script type="application/json" id="editor-data" set:html={editorJson} />
 		</section>
 	</div>
 </Admin>
@@ -93,7 +178,9 @@ const photos = await getPhotosForAdmin(post.id);
 <script>
 	import { formatTakenAt } from '../../../lib/format';
 	import { tripDateRange } from '../../../lib/photo-meta';
+	import type { Block } from '../../../lib/blocks';
 	import { preparePhoto, runWithLimit, uploadPhoto, type UploadedPhoto } from '../../../scripts/admin-upload';
+	import { BlockEditor, type EditorPhoto } from '../../../scripts/block-editor';
 
 	const workspace = document.querySelector<HTMLElement>('.workspace')!;
 	const postId = workspace.dataset.postId!;
@@ -158,19 +245,25 @@ const photos = await getPhotosForAdmin(post.id);
 		card.dataset.photoId = photo.id;
 		card.querySelector('img')!.src = `/api/admin/media/${photo.r2_key_thumb}`;
 		card.querySelector('.taken')!.textContent = formatTakenAt(photo.taken_at);
-		card.querySelector<HTMLInputElement>('.photo-note')!.value = photo.note;
+		card.querySelector<HTMLInputElement>('[data-field="note"]')!.value = photo.note;
 		grid.appendChild(card);
 		photoCount.textContent = String(grid.children.length);
+		editor?.addPhoto({
+			id: photo.id,
+			label: `Photo ${grid.children.length} · ${formatTakenAt(photo.taken_at)}`,
+			thumbUrl: `/api/admin/media/${photo.r2_key_thumb}`,
+		});
 	}
 
 	grid.addEventListener('change', async (event) => {
 		const input = event.target as HTMLInputElement;
-		if (!input.classList.contains('photo-note')) return;
+		if (!input.classList.contains('photo-text')) return;
 		const card = input.closest<HTMLElement>('.photo-card')!;
 		const status = card.querySelector<HTMLElement>('.card-status')!;
+		const field = input.dataset.field!;
 		try {
-			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'PATCH', { note: input.value });
-			setStatus(status, 'Note saved', true);
+			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'PATCH', { [field]: input.value });
+			setStatus(status, `${field === 'alt' ? 'Alt text' : field[0].toUpperCase() + field.slice(1)} saved`, true);
 		} catch (error) {
 			setStatus(status, (error as Error).message, false);
 		}
@@ -265,6 +358,145 @@ const photos = await getPhotosForAdmin(post.id);
 		const files = [...(event.dataTransfer?.files ?? [])];
 		if (files.length) uploadFiles(files);
 	});
+	// ---- The post: drafting, editing and publishing ----
+
+	interface EditorData {
+		postId: string;
+		status: 'draft' | 'published';
+		blocks: Block[];
+		summary: string;
+		coverPhotoId: string | null;
+		editable: boolean;
+		job: { id: string; status: string } | null;
+		photos: EditorPhoto[];
+	}
+
+	const data = JSON.parse(document.getElementById('editor-data')!.textContent!) as EditorData;
+	const generateButton = document.querySelector<HTMLButtonElement>('#generate')!;
+	const draftStatus = document.querySelector<HTMLElement>('.draft-status')!;
+	const saveButton = document.querySelector<HTMLButtonElement>('#save-post')!;
+	const publishButton = document.querySelector<HTMLButtonElement>('#publish')!;
+	const postStatus = document.querySelector<HTMLElement>('.post-status')!;
+	const summaryInput = document.querySelector<HTMLTextAreaElement>('#summary')!;
+
+	let dirty = false;
+	let coverPhotoId = data.coverPhotoId;
+
+	function markDirty() {
+		dirty = true;
+		saveButton.disabled = false;
+		postStatus.textContent = 'Unsaved changes';
+		postStatus.className = 'post-status';
+	}
+
+	const editor: BlockEditor | null = data.editable
+		? new BlockEditor(document.querySelector<HTMLElement>('#block-editor')!, data.blocks, data.photos, markDirty)
+		: null;
+	summaryInput.addEventListener('input', markDirty);
+	window.addEventListener('beforeunload', (event) => {
+		if (dirty) event.preventDefault();
+	});
+
+	// The cover is saved with the post (Save post), like the rest of the editor.
+	grid.addEventListener('click', (event) => {
+		const button = event.target as HTMLButtonElement;
+		if (!button.classList.contains('cover')) return;
+		coverPhotoId = button.closest<HTMLElement>('.photo-card')!.dataset.photoId!;
+		for (const other of grid.querySelectorAll<HTMLButtonElement>('.cover')) {
+			const isCover = other === button;
+			other.dataset.cover = String(isCover);
+			other.textContent = isCover ? 'Cover photo' : 'Make cover';
+		}
+		markDirty();
+	});
+
+	async function savePost(): Promise<boolean> {
+		if (!editor) return false;
+		saveButton.disabled = true;
+		setStatus(postStatus, 'Saving…', true);
+		try {
+			await sendJson(`/api/admin/posts/${postId}/content`, 'PUT', {
+				body: editor.getBlocks(),
+				summary: summaryInput.value,
+				cover_photo_id: coverPhotoId,
+			});
+			dirty = false;
+			setStatus(postStatus, 'Saved', true);
+			return true;
+		} catch (error) {
+			saveButton.disabled = false;
+			setStatus(postStatus, (error as Error).message, false);
+			return false;
+		}
+	}
+	saveButton.addEventListener('click', savePost);
+
+	publishButton.addEventListener('click', async () => {
+		const publish = publishButton.dataset.published !== 'true';
+		if (dirty && !(await savePost())) return;
+		try {
+			await sendJson(`/api/admin/posts/${postId}/publish`, 'POST', { published: publish });
+			location.reload();
+		} catch (error) {
+			setStatus(postStatus, (error as Error).message, false);
+		}
+	});
+
+	const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	async function waitForDraft(jobId: string) {
+		generateButton.disabled = true;
+		setStatus(draftStatus, 'Writing a draft… this usually takes a minute or two.', true);
+		for (;;) {
+			await sleep(4000);
+			const response = await fetch(`/api/admin/jobs/${jobId}`);
+			if (!response.ok) {
+				setStatus(draftStatus, `Couldn't check the draft (HTTP ${response.status}). Reload to try again.`, false);
+				return;
+			}
+			const job = (await response.json()) as { status: string; error: string | null };
+			if (job.status === 'succeeded') {
+				dirty = false;
+				location.reload();
+				return;
+			}
+			if (job.status === 'failed') {
+				setStatus(draftStatus, `The draft failed: ${job.error}`, false);
+				generateButton.disabled = false;
+				return;
+			}
+			if (job.error) setStatus(draftStatus, `Writing a draft… ${job.error}`, true);
+		}
+	}
+
+	// Regenerating replaces the post text, so it takes two clicks when there is text to lose.
+	generateButton.addEventListener('click', async () => {
+		const hasText = (editor?.getBlocks().length ?? 0) > 0;
+		if (hasText && generateButton.dataset.armed !== 'true') {
+			generateButton.dataset.armed = 'true';
+			generateButton.textContent = 'Replace the current post?';
+			setTimeout(() => {
+				generateButton.dataset.armed = 'false';
+				generateButton.textContent = 'Regenerate draft';
+			}, 4000);
+			return;
+		}
+		generateButton.dataset.armed = 'false';
+		generateButton.textContent = hasText ? 'Regenerate draft' : 'Generate draft';
+		generateButton.disabled = true;
+		try {
+			const response = await fetch(`/api/admin/posts/${postId}/draft`, { method: 'POST' });
+			const body = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
+			if (!response.ok || !body.id) throw new Error(body.error ?? `Could not start the draft (HTTP ${response.status})`);
+			await waitForDraft(body.id);
+		} catch (error) {
+			generateButton.disabled = false;
+			setStatus(draftStatus, (error as Error).message, false);
+		}
+	});
+
+	if (data.job && (data.job.status === 'queued' || data.job.status === 'running')) waitForDraft(data.job.id);
+
 </script>
 
 <style>
@@ -435,6 +667,209 @@ const photos = await getPhotosForAdmin(post.id);
 
 	.delete[data-armed='true'] {
 		color: #b3261e;
+	}
+
+	/* ---- Photo card extras ---- */
+
+	.caption-fields {
+		margin-top: 0.4rem;
+		font-size: 0.8rem;
+		color: var(--muted);
+	}
+
+	.caption-fields summary {
+		cursor: pointer;
+	}
+
+	.caption-fields input {
+		margin-top: 0.35rem;
+		font-size: 0.85rem !important;
+		padding: 0.4rem 0.55rem !important;
+	}
+
+	.cover {
+		margin-left: auto;
+		border: none;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 0.8rem;
+		cursor: pointer;
+		text-decoration: underline;
+	}
+
+	.cover[data-cover='true'] {
+		color: var(--accent);
+		font-weight: 500;
+		text-decoration: none;
+		cursor: default;
+	}
+
+	/* ---- The post: drafting and editing ---- */
+
+	.post-section {
+		margin-top: 3.5rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--rule);
+	}
+
+	.post-section .hint {
+		margin: 0 0 1rem;
+		font-size: 0.9rem;
+		color: var(--muted);
+	}
+
+	.draft-bar,
+	.publish-bar {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem 1rem;
+	}
+
+	.draft-status,
+	.post-status {
+		font-size: 0.9rem;
+	}
+
+	.editor {
+		margin-top: 1.5rem;
+	}
+
+	.editor[hidden],
+	.publish-bar [hidden] {
+		display: none;
+	}
+
+	.editor-head {
+		margin-bottom: 1rem;
+	}
+
+	.editor-head textarea {
+		min-height: 0 !important;
+	}
+
+	.publish-bar {
+		position: sticky;
+		bottom: 0;
+		margin-top: 1.5rem;
+		padding: 0.9rem 0;
+		background: var(--bg);
+		border-top: 1px solid var(--rule);
+	}
+
+	#block-editor :global(.block) {
+		margin-bottom: 0.75rem;
+		padding: 0.75rem;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 8px;
+	}
+
+	#block-editor :global(.block-bar) {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		margin-bottom: 0.5rem;
+	}
+
+	#block-editor :global(.block-type) {
+		margin-right: auto;
+		font-size: 0.75rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+
+	#block-editor :global(.icon) {
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid var(--rule);
+		border-radius: 6px;
+		background: var(--bg);
+		color: var(--text);
+		cursor: pointer;
+	}
+
+	#block-editor :global(.icon:disabled) {
+		opacity: 0.35;
+		cursor: default;
+	}
+
+	#block-editor :global(textarea) {
+		min-height: 0;
+	}
+
+	#block-editor :global(.block-heading) {
+		font-family: var(--serif);
+		font-size: 1.25rem !important;
+	}
+
+	#block-editor :global(.stack) {
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	#block-editor :global(.photo-row),
+	#block-editor :global(.gallery-row) {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	#block-editor :global(.block-thumb) {
+		width: 9rem;
+		aspect-ratio: 4 / 3;
+		object-fit: cover;
+		border-radius: 6px;
+		background: #f0ede8;
+	}
+
+	#block-editor :global(.gallery-item) {
+		display: grid;
+		justify-items: start;
+		gap: 0.2rem;
+	}
+
+	#block-editor :global(.gallery-item .block-thumb) {
+		width: 7rem;
+	}
+
+	#block-editor :global(.photo-picker) {
+		width: auto !important;
+		max-width: 100%;
+	}
+
+	#block-editor :global(.link) {
+		border: none;
+		background: none;
+		padding: 0;
+		color: var(--muted);
+		font: inherit;
+		font-size: 0.8rem;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+
+	#block-editor :global(.add-bar) {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 1rem;
+		font-size: 0.9rem;
+		color: var(--muted);
+	}
+
+	#block-editor :global(.button.small) {
+		padding: 0.35rem 0.8rem;
+		font-size: 0.85rem;
+	}
+
+	#block-editor :global(.hint) {
+		margin: 0;
+		font-size: 0.8rem;
 	}
 
 	@media (max-width: 700px) {

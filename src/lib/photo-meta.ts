@@ -3,6 +3,8 @@
 
 export const DISPLAY_MAX_PX = 2400;
 export const THUMB_MAX_PX = 600;
+/** Sent to the AI drafter. The API caps images at 2000px when a request has more than 20 of them. */
+export const AI_MAX_PX = 1568;
 
 /** Scales width x height down (never up) so the long edge is at most maxPx. */
 export function fitWithin(width: number, height: number, maxPx: number): { width: number; height: number } {

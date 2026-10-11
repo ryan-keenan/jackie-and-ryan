@@ -63,6 +63,21 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
   - **In the browser:** each photo's EXIF date and GPS are read, HEIC is converted where needed, and a 2400px display JPEG and a 600px thumbnail are produced. Re-encoding strips all metadata.
   - **Upload:** the original plus both JPEGs go to `POST /api/admin/posts/:id/photos`.
   - **Stored:** originals go to R2 but are never served. GPS is kept only in D1, as context for AI drafting.
+  - **AI copy:** each upload also produces a 1568px `ai.jpg` copy for drafting. The API limits images to 2000px when a request carries more than 20 of them.
+
+### AI drafting, editing and publishing
+- **Starting a draft:** "Generate draft" calls `POST /api/admin/posts/:id/draft`. That creates a row in `jobs` and sends `{ jobId }` to the `DRAFT_QUEUE` Cloudflare Queue.
+- **Running the job:** the queue consumer in `src/worker.ts`, the Worker entry point, calls `runDraftJob` in `src/lib/ai/job.ts`. Astro still handles all HTTP requests through `@astrojs/cloudflare/handler`. The admin page polls `GET /api/admin/jobs/:id` for the result.
+- **The Claude request** (`src/lib/ai/draft.ts`):
+  - It sends one Claude request with every photo's AI copy, labeled `P1`, `P2` and so on, plus the post notes.
+  - It asks for structured JSON output (`draftOutputSchema` in `src/lib/ai/schema.ts`). `convertDraft` maps the photo labels back to ids and validates the result against the body format.
+  - The model is `DRAFT_MODEL` in `wrangler.jsonc`: `claude-sonnet-5-5`, as confirmed with the owners.
+  - Effort is `medium`, and the server-side refusal fallback is on (`fallbacks: "default"`).
+  - `ANTHROPIC_API_KEY` is a Worker secret. Locally it lives in `.dev.vars`.
+- **Failures:** rate limits and API errors retry up to 3 attempts. Refusals, cut-off replies and unusable output fail the job, with the reason shown on the page. Token usage is recorded on the job.
+- **The prompt** is in `src/lib/ai/prompt.ts`. Do not change its wording without the owners' approval.
+- **Editing:** the editor (`src/scripts/block-editor.ts`) saves through `PUT /api/admin/posts/:id/content`. Publishing goes through `POST /api/admin/posts/:id/publish`, which refuses an empty or invalid body. `/admin/posts/:id/preview` shows the last saved version, drafts included.
+- **Caching:** public pages send `cache-control: no-cache`, so edits and unpublishing show up on the next visit.
 
 ### Wedding page (`public/wedding/`)
 - **index.html:** a single-page layout with a hero section, photo gallery, video embed, and RSVP link.

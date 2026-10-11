@@ -46,3 +46,16 @@ export function parseBody(json: string, postPhotoIds: Iterable<string>): Block[]
 	}
 	return body;
 }
+
+/** The text of a stored body as Markdown (headings, paragraphs, quotes; photos omitted). */
+export function blockText(json: string): string {
+	return bodySchema
+		.parse(JSON.parse(json))
+		.flatMap((block) => {
+			if (block.type === 'heading') return [`## ${block.text}`];
+			if (block.type === 'paragraph') return [block.markdown];
+			if (block.type === 'quote') return [`> ${block.text}${block.attribution ? ` (${block.attribution})` : ''}`];
+			return [];
+		})
+		.join('\n\n');
+}

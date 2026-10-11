@@ -16,6 +16,7 @@
     "seed:local": "scripts/seed-local.sh"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@astrojs/cloudflare": "^14.3.3",
     "astro": "^7.3.5",
     "exifr": "^7.1.3",

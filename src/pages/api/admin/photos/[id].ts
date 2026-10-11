@@ -2,15 +2,22 @@ import type { APIRoute } from 'astro';
 import { z } from 'astro/zod';
 import { env } from 'cloudflare:workers';
 import { parseBody, referencedPhotoIds } from '../../../../lib/blocks';
-import { deletePhotoRow, getPhotoForAdmin, getPhotosForAdmin, getPostForAdmin, updatePhotoNote } from '../../../../lib/db';
+import { deletePhotoRow, getPhotoForAdmin, getPhotosForAdmin, getPostForAdmin, updatePhotoText } from '../../../../lib/db';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
 
-const noteSchema = z.object({ note: z.string().trim().max(500) }).strict();
+const textSchema = z
+	.object({
+		note: z.string().trim().max(500),
+		caption: z.string().trim().max(500),
+		alt: z.string().trim().max(500),
+	})
+	.partial()
+	.strict();
 
 export const PATCH: APIRoute = ({ params, request }) =>
 	handle(async () => {
-		const { note } = parseWith(noteSchema, await readJson(request));
-		if (!(await updatePhotoNote(params.id!, note))) throw new BadRequest('Photo not found', 404);
+		const text = parseWith(textSchema, await readJson(request));
+		if (!(await updatePhotoText(params.id!, text))) throw new BadRequest('Photo not found', 404);
 		return json({ ok: true });
 	});
 
@@ -29,6 +36,8 @@ export const DELETE: APIRoute = ({ params }) =>
 		}
 
 		await deletePhotoRow(photo);
-		await env.PHOTOS.delete([photo.r2_key_original, photo.r2_key_display, photo.r2_key_thumb]);
+		await env.PHOTOS.delete(
+			[photo.r2_key_original, photo.r2_key_display, photo.r2_key_thumb, photo.r2_key_ai].filter((key): key is string => !!key),
+		);
 		return json({ ok: true });
 	});

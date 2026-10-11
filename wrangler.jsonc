@@ -3,7 +3,8 @@
 	"compatibility_date": "2026-10-01",
 	"compatibility_flags": ["global_fetch_strictly_public"],
 	"name": "jackie-and-ryan",
-	"main": "@astrojs/cloudflare/entrypoints/server",
+	// Astro handles HTTP; src/worker.ts adds the queue consumer for AI drafting.
+	"main": "./src/worker.ts",
 	"assets": {
 		"directory": "./dist",
 		"binding": "ASSETS"
@@ -18,7 +19,15 @@
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "silent-resonance-d3bf.cloudflareaccess.com",
 		// Audience tag of the Access application protecting jackie-and-ryan.jackie-and-ryan.workers.dev
-		"ACCESS_AUD": "ae63a700c923ac30570decbc7fd01a41f07caba63ad57fa5828471a6830f373e"
+		"ACCESS_AUD": "ae63a700c923ac30570decbc7fd01a41f07caba63ad57fa5828471a6830f373e",
+		// Claude model for AI drafting, confirmed with Jackie and Ryan. ANTHROPIC_API_KEY is a secret.
+		"DRAFT_MODEL": "claude-sonnet-5-5"
+	},
+	// Background AI drafting: the admin page enqueues a job and the consumer in
+	// src/worker.ts runs it. One job per batch; up to 2 retries for rate limits and API errors.
+	"queues": {
+		"producers": [{ "binding": "DRAFT_QUEUE", "queue": "jackie-and-ryan-drafts" }],
+		"consumers": [{ "queue": "jackie-and-ryan-drafts", "max_batch_size": 1, "max_retries": 2 }]
 	},
 	// Posts, photo metadata and AI drafting jobs.
 	"d1_databases": [

@@ -1,5 +1,6 @@
 import exifr from 'exifr';
 import {
+	AI_MAX_PX,
 	DISPLAY_MAX_PX,
 	THUMB_MAX_PX,
 	exifTakenAt,
@@ -11,9 +12,9 @@ import {
 // Prepares photos in the browser and uploads them for one post:
 //   1. read the date taken and GPS position from the photo's EXIF data
 //   2. decode it (iPhone HEIC photos go through heic2any where the browser can't)
-//   3. draw it to a canvas at display and thumbnail sizes and encode JPEGs;
+//   3. draw it to a canvas at display, AI-drafting and thumbnail sizes and encode JPEGs;
 //      re-encoding drops all embedded metadata, including GPS
-//   4. upload the original, both JPEGs and the metadata in one request
+//   4. upload the original, the three JPEGs and the metadata in one request
 
 export interface UploadedPhoto {
 	id: string;
@@ -25,6 +26,7 @@ export interface UploadedPhoto {
 export interface PreparedPhoto {
 	original: File;
 	display: Blob;
+	ai: Blob;
 	thumb: Blob;
 	meta: {
 		width: number;
@@ -95,12 +97,14 @@ export async function preparePhoto(file: File, note = ''): Promise<PreparedPhoto
 	const [exif, bitmap] = await Promise.all([readExif(file), decode(file, mimeType)]);
 	try {
 		const displayCanvas = drawScaled(bitmap, bitmap.width, bitmap.height, DISPLAY_MAX_PX);
-		// The thumbnail is scaled from the display size, which looks better than one big jump.
-		const thumbCanvas = drawScaled(displayCanvas, displayCanvas.width, displayCanvas.height, THUMB_MAX_PX);
-		const [display, thumb] = await Promise.all([toJpeg(displayCanvas), toJpeg(thumbCanvas)]);
+		// Smaller sizes are scaled from the display size, which looks better than one big jump.
+		const aiCanvas = drawScaled(displayCanvas, displayCanvas.width, displayCanvas.height, AI_MAX_PX);
+		const thumbCanvas = drawScaled(aiCanvas, aiCanvas.width, aiCanvas.height, THUMB_MAX_PX);
+		const [display, ai, thumb] = await Promise.all([toJpeg(displayCanvas), toJpeg(aiCanvas), toJpeg(thumbCanvas)]);
 		return {
 			original,
 			display,
+			ai,
 			thumb,
 			meta: { width: displayCanvas.width, height: displayCanvas.height, ...exif, note },
 		};
@@ -118,6 +122,7 @@ export function uploadPhoto(
 	const form = new FormData();
 	form.append('original', photo.original);
 	form.append('display', photo.display, 'display.jpg');
+	form.append('ai', photo.ai, 'ai.jpg');
 	form.append('thumb', photo.thumb, 'thumb.jpg');
 	form.append('meta', JSON.stringify(photo.meta));
 

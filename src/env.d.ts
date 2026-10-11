@@ -15,5 +15,8 @@ declare namespace Cloudflare {
 		DEV_ADMIN_EMAIL?: string;
 		ACCESS_TEAM_DOMAIN?: string;
 		ACCESS_AUD?: string;
+		/** Claude API key for AI drafting (secret). */
+		ANTHROPIC_API_KEY?: string;
+		DRAFT_MODEL?: string;
 	}
 }

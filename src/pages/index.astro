@@ -5,7 +5,8 @@ import { formatTripDates, mediaUrl } from '../lib/format';
 
 const posts = await listPublishedPosts('public');
 
-Astro.response.headers.set('cache-control', 'public, max-age=300');
+// Browsers re-check every visit, so edits and unpublishing show up immediately.
+Astro.response.headers.set('cache-control', 'no-cache');
 ---
 
 <Base title="Jackie & Ryan" description="Our journal: trips, adventures and everyday life.">

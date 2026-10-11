@@ -13,7 +13,8 @@ const photos = await getPhotosForPost(post.id);
 const blocks = parseBody(post.body, photos.map((photo) => photo.id));
 const dates = formatTripDates(post.trip_start, post.trip_end);
 
-Astro.response.headers.set('cache-control', 'public, max-age=300');
+// Browsers re-check every visit, so edits and unpublishing show up immediately.
+Astro.response.headers.set('cache-control', 'no-cache');
 ---
 
 <Base title={`${post.title} · Jackie & Ryan`} description={post.summary}>

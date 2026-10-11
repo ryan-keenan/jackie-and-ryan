@@ -5,9 +5,10 @@ import { getPhotoForAdmin, getPostForAdmin, insertPhoto } from '../../../../../l
 import { BadRequest, handle, json, parseWith } from '../../../../../lib/http';
 
 // The browser resizes each photo before upload (src/scripts/admin-upload.ts) and
-// sends three files plus metadata read from the photo's EXIF data:
+// sends four files plus metadata read from the photo's EXIF data:
 //   original  the file as taken; kept for the record, never served publicly
 //   display   JPEG, at most 2400px on the long edge, metadata stripped
+//   ai        JPEG, at most 1568px, sent to the AI drafter; never served
 //   thumb     JPEG, at most 600px on the long edge, metadata stripped
 
 const MB = 1024 * 1024;
@@ -51,6 +52,7 @@ export const POST: APIRoute = ({ params, request }) =>
 		const form = await request.formData();
 		const original = requireFile(form, 'original', Object.keys(ORIGINAL_TYPES), 60 * MB);
 		const display = requireFile(form, 'display', ['image/jpeg'], 15 * MB);
+		const ai = requireFile(form, 'ai', ['image/jpeg'], 8 * MB);
 		const thumb = requireFile(form, 'thumb', ['image/jpeg'], 2 * MB);
 		let rawMeta: unknown;
 		try {
@@ -65,12 +67,14 @@ export const POST: APIRoute = ({ params, request }) =>
 		const keys = {
 			original: `${prefix}/original.${ORIGINAL_TYPES[original.type]}`,
 			display: `${prefix}/display.jpg`,
+			ai: `${prefix}/ai.jpg`,
 			thumb: `${prefix}/thumb.jpg`,
 		};
 
 		await Promise.all([
 			env.PHOTOS.put(keys.original, original.stream(), { httpMetadata: { contentType: original.type } }),
 			env.PHOTOS.put(keys.display, display.stream(), { httpMetadata: { contentType: 'image/jpeg' } }),
+			env.PHOTOS.put(keys.ai, ai.stream(), { httpMetadata: { contentType: 'image/jpeg' } }),
 			env.PHOTOS.put(keys.thumb, thumb.stream(), { httpMetadata: { contentType: 'image/jpeg' } }),
 		]);
 
@@ -80,6 +84,7 @@ export const POST: APIRoute = ({ params, request }) =>
 				post_id: postId,
 				r2_key_original: keys.original,
 				r2_key_display: keys.display,
+				r2_key_ai: keys.ai,
 				r2_key_thumb: keys.thumb,
 				...meta,
 			});

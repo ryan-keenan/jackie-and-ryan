@@ -1,16 +1,18 @@
 ---
 import type { Block } from '../lib/blocks';
 import type { PhotoRow } from '../lib/db';
-import { mediaUrl } from '../lib/format';
 import { renderMarkdown } from '../lib/markdown';
 
 interface Props {
 	blocks: Block[];
 	/** Every photo attached to the post. parseBody has already checked the blocks only reference these. */
 	photos: PhotoRow[];
+	/** Where images are served from: the public route, or the admin route for previews of drafts. */
+	mediaBase?: '/media/' | '/api/admin/media/';
 }
 
-const { blocks, photos } = Astro.props;
+const { blocks, photos, mediaBase = '/media/' } = Astro.props;
+const mediaUrl = (key: string) => `${mediaBase}${key}`;
 const photosById = new Map(photos.map((photo) => [photo.id, photo]));
 const photo = (id: string) => photosById.get(id)!;
 ---

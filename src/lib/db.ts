@@ -108,6 +108,7 @@ export interface AdminPost extends PostRow {
 
 export interface AdminPhoto extends PhotoRow {
 	r2_key_original: string;
+	r2_key_ai: string | null;
 	lat: number | null;
 	lon: number | null;
 	note: string;
@@ -132,7 +133,7 @@ export async function getPostForAdmin(id: string): Promise<AdminPost | null> {
 
 export async function getPhotosForAdmin(postId: string): Promise<AdminPhoto[]> {
 	const { results } = await env.DB.prepare(
-		`SELECT id, post_id, r2_key_original, r2_key_display, r2_key_thumb, width, height, taken_at,
+		`SELECT id, post_id, r2_key_original, r2_key_display, r2_key_thumb, r2_key_ai, width, height, taken_at,
 		        lat, lon, caption, alt, note, sort_order
 		   FROM photos WHERE post_id = ? ORDER BY sort_order, taken_at`,
 	)
@@ -143,7 +144,7 @@ export async function getPhotosForAdmin(postId: string): Promise<AdminPhoto[]> {
 
 export async function getPhotoForAdmin(id: string): Promise<AdminPhoto | null> {
 	return env.DB.prepare(
-		`SELECT id, post_id, r2_key_original, r2_key_display, r2_key_thumb, width, height, taken_at,
+		`SELECT id, post_id, r2_key_original, r2_key_display, r2_key_thumb, r2_key_ai, width, height, taken_at,
 		        lat, lon, caption, alt, note, sort_order
 		   FROM photos WHERE id = ?`,
 	)
@@ -209,6 +210,7 @@ export interface NewPhoto {
 	post_id: string;
 	r2_key_original: string;
 	r2_key_display: string;
+	r2_key_ai: string;
 	r2_key_thumb: string;
 	width: number;
 	height: number;
@@ -223,15 +225,16 @@ export async function insertPhoto(photo: NewPhoto): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DB.batch([
 		env.DB.prepare(
-			`INSERT INTO photos (id, post_id, r2_key_original, r2_key_display, r2_key_thumb, width, height,
+			`INSERT INTO photos (id, post_id, r2_key_original, r2_key_display, r2_key_ai, r2_key_thumb, width, height,
 			                     taken_at, lat, lon, note, sort_order)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 			         (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM photos WHERE post_id = ?))`,
 		).bind(
 			photo.id,
 			photo.post_id,
 			photo.r2_key_original,
 			photo.r2_key_display,
+			photo.r2_key_ai,
 			photo.r2_key_thumb,
 			photo.width,
 			photo.height,
@@ -245,10 +248,6 @@ export async function insertPhoto(photo: NewPhoto): Promise<void> {
 	]);
 }
 
-export async function updatePhotoNote(id: string, note: string): Promise<boolean> {
-	const result = await env.DB.prepare('UPDATE photos SET note = ? WHERE id = ?').bind(note, id).run();
-	return result.meta.changes > 0;
-}
 
 /** Deletes a photo row and clears it as the post's cover if it was one. */
 export async function deletePhotoRow(photo: Pick<AdminPhoto, 'id' | 'post_id'>): Promise<void> {
@@ -260,4 +259,131 @@ export async function deletePhotoRow(photo: Pick<AdminPhoto, 'id' | 'post_id'>):
 		env.DB.prepare('DELETE FROM photos WHERE id = ?').bind(photo.id),
 		env.DB.prepare('UPDATE posts SET updated_at = ? WHERE id = ?').bind(new Date().toISOString(), photo.post_id),
 	]);
+}
+
+// ---------------------------------------------------------------------------
+// AI drafting jobs (see src/lib/ai/draft.ts).
+
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+
+export interface JobRow {
+	id: string;
+	post_id: string;
+	status: JobStatus;
+	error: string | null;
+	model: string;
+	input_tokens: number | null;
+	output_tokens: number | null;
+	created_at: string;
+	updated_at: string;
+}
+
+const JOB_COLUMNS = 'id, post_id, status, error, model, input_tokens, output_tokens, created_at, updated_at';
+
+export async function createJob(job: { id: string; postId: string; model: string }): Promise<void> {
+	const now = new Date().toISOString();
+	await env.DB.prepare(
+		`INSERT INTO jobs (id, post_id, status, model, created_at, updated_at) VALUES (?, ?, 'queued', ?, ?, ?)`,
+	)
+		.bind(job.id, job.postId, job.model, now, now)
+		.run();
+}
+
+export async function getJob(id: string): Promise<JobRow | null> {
+	return env.DB.prepare(`SELECT ${JOB_COLUMNS} FROM jobs WHERE id = ?`).bind(id).first<JobRow>();
+}
+
+export async function latestJobForPost(postId: string): Promise<JobRow | null> {
+	return env.DB.prepare(`SELECT ${JOB_COLUMNS} FROM jobs WHERE post_id = ? ORDER BY created_at DESC LIMIT 1`)
+		.bind(postId)
+		.first<JobRow>();
+}
+
+export async function updateJob(
+	id: string,
+	update: { status: JobStatus; error?: string | null; model?: string; input_tokens?: number; output_tokens?: number },
+): Promise<void> {
+	await env.DB.prepare(
+		`UPDATE jobs SET status = ?, error = ?, model = COALESCE(?, model),
+		        input_tokens = COALESCE(?, input_tokens), output_tokens = COALESCE(?, output_tokens), updated_at = ?
+		  WHERE id = ?`,
+	)
+		.bind(
+			update.status,
+			update.error ?? null,
+			update.model ?? null,
+			update.input_tokens ?? null,
+			update.output_tokens ?? null,
+			new Date().toISOString(),
+			id,
+		)
+		.run();
+}
+
+/** Bodies of the most recent published posts, other than this one, as examples of the journal's voice. */
+export async function recentPublishedBodies(excludePostId: string, limit: number): Promise<{ title: string; body: string }[]> {
+	const { results } = await env.DB.prepare(
+		`SELECT title, body FROM posts WHERE status = 'published' AND id != ? ORDER BY published_at DESC LIMIT ?`,
+	)
+		.bind(excludePostId, limit)
+		.all<{ title: string; body: string }>();
+	return results;
+}
+
+/** Replaces a post's title, summary, cover and body with a generated draft, and sets photo captions. */
+export async function saveDraft(
+	postId: string,
+	draft: { title: string; summary: string; coverPhotoId: string; body: string; captions: { photoId: string; caption: string; alt: string }[] },
+): Promise<void> {
+	const now = new Date().toISOString();
+	await env.DB.batch([
+		env.DB.prepare(
+			'UPDATE posts SET title = ?, summary = ?, cover_photo_id = ?, body = ?, updated_at = ? WHERE id = ?',
+		).bind(draft.title, draft.summary, draft.coverPhotoId, draft.body, now, postId),
+		...draft.captions.map((c) =>
+			env.DB.prepare('UPDATE photos SET caption = ?, alt = ? WHERE id = ? AND post_id = ?').bind(
+				c.caption,
+				c.alt,
+				c.photoId,
+				postId,
+			),
+		),
+	]);
+}
+
+// ---------------------------------------------------------------------------
+// Editing and publishing.
+
+export async function updatePostContent(
+	id: string,
+	content: { body: string; summary: string; cover_photo_id: string | null },
+): Promise<boolean> {
+	const result = await env.DB.prepare(
+		'UPDATE posts SET body = ?, summary = ?, cover_photo_id = ?, updated_at = ? WHERE id = ?',
+	)
+		.bind(content.body, content.summary, content.cover_photo_id, new Date().toISOString(), id)
+		.run();
+	return result.meta.changes > 0;
+}
+
+/** Publishes (keeping the first publish date on re-publish) or returns a post to draft. */
+export async function setPublished(id: string, published: boolean): Promise<boolean> {
+	const now = new Date().toISOString();
+	const result = published
+		? await env.DB.prepare(
+				`UPDATE posts SET status = 'published', published_at = COALESCE(published_at, ?), updated_at = ? WHERE id = ?`,
+			)
+				.bind(now, now, id)
+				.run()
+		: await env.DB.prepare(`UPDATE posts SET status = 'draft', updated_at = ? WHERE id = ?`).bind(now, id).run();
+	return result.meta.changes > 0;
+}
+
+export async function updatePhotoText(id: string, text: { note?: string; caption?: string; alt?: string }): Promise<boolean> {
+	const columns = (['note', 'caption', 'alt'] as const).filter((column) => text[column] !== undefined);
+	if (columns.length === 0) return true;
+	const result = await env.DB.prepare(`UPDATE photos SET ${columns.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`)
+		.bind(...columns.map((c) => text[c]!), id)
+		.run();
+	return result.meta.changes > 0;
 }
