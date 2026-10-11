@@ -79,6 +79,23 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 - **Editing:** the editor (`src/scripts/block-editor.ts`) saves through `PUT /api/admin/posts/:id/content`. Publishing goes through `POST /api/admin/posts/:id/publish`, which refuses an empty or invalid body. `/admin/posts/:id/preview` shows the last saved version, drafts included.
 - **Caching:** public pages send `cache-control: no-cache`, so edits and unpublishing show up on the next visit.
 
+### Maps
+- **Setting:** each post has a `map_mode`: `off`, `fit`, `city`, `region`, `country` or `world`. New posts default to `country`.
+- **Rendering:** `src/lib/map.ts` turns photo GPS positions into a map view, and `src/components/TripMap.astro` draws it under the post title with MapLibre and free OpenFreeMap tiles (no key needed). MapLibre loads only when the map scrolls near view.
+- **Privacy:** positions are rounded to 2 decimal places (about 1 km) before reaching the page, so a pin never marks an exact spot.
+- **MapLibre's worker:** it's loaded through `setWorkerUrl` with a Vite `?worker&url` import. Without that, the bundler moves the worker file and the map draws no tiles.
+
+### Video (Cloudflare Stream)
+- **Uploading:** the dropzone sends videos to `src/scripts/video-upload.ts`, which uses tus-js-client to upload straight to Stream.
+  - The Worker's `POST /api/admin/posts/:id/videos/tus` creates the upload with the API token, inserts a `videos` row, and returns Stream's one-time upload URL in `Location`.
+  - When the upload finishes, the browser marks it `processing`. The page then polls `GET /api/admin/videos/:id`, which asks Stream for status until the video is `ready` or `error`.
+- **Settings:** `CF_ACCOUNT_ID` is a var in `wrangler.jsonc`. `STREAM_API_TOKEN` (Stream:Edit only) is a secret; locally it goes in `.dev.vars`.
+- **Posts:** video blocks (`{ type: 'video', videoId }`) render Stream's iframe player. Publishing refuses a post whose videos aren't `ready`.
+- **Access:** videos don't use signed URLs, so anyone with a video's id can play it. That needs revisiting before private posts are viewable.
+
+### Dev server note
+After adding a dependency, or when the dev server re-optimizes dependencies, it can fail with "file does not exist ... deps_ssr/handler". Fix it by running `npx astro dev stop`, then `rm -rf node_modules/.vite`, then restarting. Production builds are unaffected.
+
 ### Wedding page (`public/wedding/`)
 - **index.html:** a single-page layout with a hero section, photo gallery, video embed, and RSVP link.
 - **script.js:**
