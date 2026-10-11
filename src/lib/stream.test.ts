@@ -52,8 +52,15 @@ describe('createDirectUpload', () => {
 	});
 
 	it('fails when Stream refuses or omits the upload URL', async () => {
-		stubFetch(new Response('quota exceeded', { status: 400 }));
-		await expect(createDirectUpload(config, { bytes: 1, name: '' })).rejects.toThrow(/HTTP 400.*quota exceeded/);
+		stubFetch(
+			new Response(JSON.stringify({ success: false, errors: [{ code: 10011, message: 'Storage capacity exceeded' }] }), {
+				status: 413,
+			}),
+		);
+		await expect(createDirectUpload(config, { bytes: 1, name: '' })).rejects.toMatchObject({
+			message: 'Stream refused the upload: Storage capacity exceeded',
+			status: 413,
+		});
 	});
 });
 

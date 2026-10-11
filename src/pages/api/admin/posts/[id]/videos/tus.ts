@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { getPostForAdmin, insertVideo } from '../../../../../../lib/db';
 import { BadRequest, handle } from '../../../../../../lib/http';
-import { createDirectUpload, MAX_VIDEO_BYTES, metadataName, readStreamConfig } from '../../../../../../lib/stream';
+import { createDirectUpload, MAX_VIDEO_BYTES, metadataName, readStreamConfig, StreamError } from '../../../../../../lib/stream';
 
 // The "create upload" step of the tus protocol, used by tus-js-client in the
 // admin page. The Worker asks Stream for a one-time upload URL (the API token
@@ -27,7 +27,16 @@ export const POST: APIRoute = ({ params, request }) =>
 		}
 		const name = metadataName(request.headers.get('Upload-Metadata'));
 
-		const { uploadUrl, streamUid } = await createDirectUpload(config, { bytes, name });
+		let created;
+		try {
+			created = await createDirectUpload(config, { bytes, name });
+		} catch (error) {
+			// Stream's 4xx refusals (e.g. storage quota) go back as-is so the browser shows
+			// the message instead of retrying; Stream outages become 502s, which it retries.
+			if (error instanceof StreamError) throw new BadRequest(error.message, error.status < 500 ? error.status : 502);
+			throw error;
+		}
+		const { uploadUrl, streamUid } = created;
 		const id = crypto.randomUUID();
 		await insertVideo({ id, postId: post.id, streamUid, fileName: name });
 

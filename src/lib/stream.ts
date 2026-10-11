@@ -18,6 +18,29 @@ export const MAX_VIDEO_SECONDS = 30 * 60;
 /** Largest video file accepted, in bytes (Stream allows more; this keeps phone uploads sane). */
 export const MAX_VIDEO_BYTES = 4 * 1024 ** 3;
 
+/** Stream refused a request; carries Stream's HTTP status and readable error message. */
+export class StreamError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+	) {
+		super(message);
+	}
+}
+
+/** The error messages from a Stream API error body, or the raw text if it isn't JSON. */
+async function streamErrorText(response: Response): Promise<string> {
+	const text = await response.text();
+	try {
+		const body = JSON.parse(text) as { errors?: { message: string }[] };
+		const messages = body.errors?.map((e) => e.message).filter(Boolean) ?? [];
+		if (messages.length) return messages.join('; ');
+	} catch {
+		// Not JSON; fall through to the raw text.
+	}
+	return text.slice(0, 300);
+}
+
 function apiUrl(config: StreamConfig, path = ''): string {
 	return `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/stream${path}`;
 }
@@ -65,7 +88,7 @@ export async function createDirectUpload(
 	const uploadUrl = response.headers.get('Location');
 	const streamUid = response.headers.get('stream-media-id');
 	if (!response.ok || !uploadUrl || !streamUid) {
-		throw new Error(`Stream refused the upload (HTTP ${response.status}): ${(await response.text()).slice(0, 300)}`);
+		throw new StreamError(`Stream refused the upload: ${await streamErrorText(response)}`, response.status);
 	}
 	return { uploadUrl, streamUid };
 }
