@@ -20,6 +20,13 @@ async function authenticateAdmin(request: Request): Promise<string> {
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
+	// One address for the site: www.jackieandryan.us -> jackieandryan.us, same path.
+	if (context.url.hostname.startsWith('www.')) {
+		const target = new URL(context.url);
+		target.hostname = target.hostname.slice('www.'.length);
+		return Response.redirect(target.toString(), 301);
+	}
+
 	if (!isAdminPath(context.url.pathname)) return next();
 
 	// Changes must come from the admin pages themselves, not from another site

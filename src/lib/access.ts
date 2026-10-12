@@ -10,8 +10,11 @@ export class AccessDenied extends Error {}
 export interface AccessConfig {
 	/** e.g. "jackieandryan.cloudflareaccess.com" */
 	teamDomain: string;
-	/** The Access application's Audience (AUD) tag. */
-	aud: string;
+	/**
+	 * Audience (AUD) tags of the Access applications in front of the site, one per
+	 * hostname setup (e.g. the workers.dev test address and jackieandryan.us).
+	 */
+	aud: string[];
 	/** Lowercased emails allowed to use the admin pages. */
 	adminEmails: string[];
 }
@@ -30,7 +33,7 @@ export function readAccessConfig(env: {
 	if (adminEmails.length === 0) throw new Error('ADMIN_EMAILS contains no email addresses');
 	return {
 		teamDomain: env.ACCESS_TEAM_DOMAIN!.trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
-		aud: env.ACCESS_AUD!.trim(),
+		aud: env.ACCESS_AUD!.split(',').map((tag) => tag.trim()).filter(Boolean),
 		adminEmails,
 	};
 }

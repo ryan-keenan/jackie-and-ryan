@@ -4,7 +4,7 @@ import { AccessDenied, parseEmailList, readAccessConfig, verifyAdmin, type Acces
 
 const config: AccessConfig = {
 	teamDomain: 'example.cloudflareaccess.com',
-	aud: 'test-aud',
+	aud: ['test-aud', 'second-app-aud'],
 	adminEmails: ['jackie@example.com', 'ryan@example.com'],
 };
 
@@ -24,7 +24,7 @@ function token(claims: Record<string, unknown>, opts: { key?: CryptoKey; aud?: s
 	return new SignJWT(claims)
 		.setProtectedHeader({ alg: 'RS256', kid: 'k1' })
 		.setIssuer(opts.iss ?? `https://${config.teamDomain}`)
-		.setAudience(opts.aud ?? config.aud)
+		.setAudience(opts.aud ?? config.aud[0])
 		.setIssuedAt()
 		.setExpirationTime(opts.exp ?? '1h')
 		.sign(opts.key ?? signingKey);
@@ -33,6 +33,10 @@ function token(claims: Record<string, unknown>, opts: { key?: CryptoKey; aud?: s
 describe('verifyAdmin', () => {
 	it('returns the email for a valid admin token, case-insensitively', async () => {
 		expect(await verifyAdmin(await token({ email: 'Jackie@Example.com' }), config, keys)).toBe('jackie@example.com');
+	});
+
+	it('accepts tokens from any of the configured Access applications', async () => {
+		expect(await verifyAdmin(await token({ email: 'ryan@example.com' }, { aud: 'second-app-aud' }), config, keys)).toBe('ryan@example.com');
 	});
 
 	it('rejects a missing token', async () => {
@@ -73,10 +77,10 @@ describe('readAccessConfig', () => {
 		expect(
 			readAccessConfig({
 				ACCESS_TEAM_DOMAIN: 'https://team.cloudflareaccess.com/',
-				ACCESS_AUD: ' aud ',
+				ACCESS_AUD: ' aud-1 , aud-2 ',
 				ADMIN_EMAILS: 'A@x.com, b@x.com',
 			}),
-		).toEqual({ teamDomain: 'team.cloudflareaccess.com', aud: 'aud', adminEmails: ['a@x.com', 'b@x.com'] });
+		).toEqual({ teamDomain: 'team.cloudflareaccess.com', aud: ['aud-1', 'aud-2'], adminEmails: ['a@x.com', 'b@x.com'] });
 	});
 });
 
