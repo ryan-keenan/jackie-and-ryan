@@ -11,6 +11,12 @@
 	},
 	// Per-version preview URLs are not used; keep them off so only the main URL serves the site.
 	"preview_urls": false,
+	// The site's real address. Deploying creates the DNS records and certificates;
+	// www redirects to the bare domain in src/middleware.ts.
+	"routes": [
+		{ "pattern": "jackieandryan.us", "custom_domain": true },
+		{ "pattern": "www.jackieandryan.us", "custom_domain": true }
+	],
 	"observability": {
 		"enabled": true
 	},
@@ -18,8 +24,9 @@
 	// ADMIN_EMAILS is a secret (`wrangler secret put ADMIN_EMAILS`) so it stays out of this public repo.
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "silent-resonance-d3bf.cloudflareaccess.com",
-		// Audience tag of the Access application protecting jackie-and-ryan.jackie-and-ryan.workers.dev
-		"ACCESS_AUD": "ae63a700c923ac30570decbc7fd01a41f07caba63ad57fa5828471a6830f373e",
+		// Audience tags of the Access applications in front of the site, comma-separated:
+		// jackie-and-ryan.jackie-and-ryan.workers.dev, then jackieandryan.us (with www).
+		"ACCESS_AUD": "ae63a700c923ac30570decbc7fd01a41f07caba63ad57fa5828471a6830f373e,da47821b9fa1a642991e12b6cde6f6dd1d9361e99abd5225868b558d5b893eec",
 		// Claude model for AI drafting, confirmed with Jackie and Ryan. ANTHROPIC_API_KEY is a secret.
 		"DRAFT_MODEL": "claude-sonnet-5-5",
 		// Cloudflare account for Stream (video) API calls; STREAM_API_TOKEN (Stream:Edit) is a secret.
