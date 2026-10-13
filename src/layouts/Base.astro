@@ -29,7 +29,7 @@ const { title, description = 'Our journal' } = Astro.props;
 			<a class="site-title" href="/">Jackie &amp; Ryan</a>
 			<nav>
 				<a href="/">Journal</a>
-				<a href="/wedding/">Wedding</a>
+				{Astro.locals.isAdmin && <a class="admin-link" href="/admin">Admin</a>}
 			</nav>
 		</header>
 		<slot />
@@ -42,7 +42,7 @@ const { title, description = 'Our journal' } = Astro.props;
 <style>
 	.site-header {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
 		max-width: 72rem;
@@ -58,6 +58,7 @@ const { title, description = 'Our journal' } = Astro.props;
 
 	nav {
 		display: flex;
+		align-items: center;
 		gap: 1.25rem;
 		font-size: 0.9rem;
 	}
@@ -69,6 +70,17 @@ const { title, description = 'Our journal' } = Astro.props;
 
 	nav a:hover {
 		color: var(--text);
+	}
+
+	nav .admin-link {
+		padding: 0.3rem 0.9rem;
+		border: 1px solid var(--rule);
+		border-radius: 999px;
+	}
+
+	nav .admin-link:hover {
+		border-color: var(--accent);
+		color: var(--accent);
 	}
 
 	.site-footer {

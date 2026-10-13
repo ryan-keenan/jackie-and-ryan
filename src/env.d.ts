@@ -2,6 +2,8 @@ declare namespace App {
 	interface Locals {
 		/** Set by src/middleware.ts on /admin and /api/admin requests once the admin login is verified. */
 		adminEmail: string;
+		/** Set by src/middleware.ts on every page: whether the visitor is a signed-in admin. */
+		isAdmin: boolean;
 	}
 }
 

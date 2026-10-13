@@ -1,9 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
 import { listPublishedPosts } from '../lib/db';
-import { formatTripDates, mediaUrl } from '../lib/format';
+import { journalCards } from '../lib/journal';
 
-const posts = await listPublishedPosts('public');
+const cards = journalCards(await listPublishedPosts('public'));
 
 // Browsers re-check every visit, so edits and unpublishing show up immediately.
 Astro.response.headers.set('cache-control', 'no-cache');
@@ -16,33 +16,30 @@ Astro.response.headers.set('cache-control', 'no-cache');
 			<p>Trips, adventures and everyday life.</p>
 		</section>
 
-		{
-			posts.length === 0 ? (
-				<p class="empty">
-					No posts yet. In the meantime, here's <a href="/wedding/">our wedding</a>.
-				</p>
-			) : (
-				<ul class="posts">
-					{posts.map((post) => {
-						const meta = [post.location, formatTripDates(post.trip_start, post.trip_end)].filter(Boolean).join(' · ');
-						return (
-							<li>
-								<a href={`/posts/${post.slug}`}>
-									{post.cover_thumb_key && (
-										<img src={mediaUrl(post.cover_thumb_key)} alt={post.cover_alt ?? ''} loading="lazy" decoding="async" />
-									)}
-									<div class="card-text">
-										{meta && <p class="meta">{meta}</p>}
-										<h2>{post.title}</h2>
-										{post.summary && <p class="summary">{post.summary}</p>}
-									</div>
-								</a>
-							</li>
-						);
-					})}
-				</ul>
-			)
-		}
+		<ul class="posts">
+			{
+				cards.map((card) => (
+					<li>
+						<a href={card.href}>
+							{card.image && (
+								<img
+									src={card.image.src}
+									alt={card.image.alt}
+									style={card.image.position ? `object-position: ${card.image.position}` : undefined}
+									loading="lazy"
+									decoding="async"
+								/>
+							)}
+							<div class="card-text">
+								{card.meta && <p class="meta">{card.meta}</p>}
+								<h2>{card.title}</h2>
+								{card.summary && <p class="summary">{card.summary}</p>}
+							</div>
+						</a>
+					</li>
+				))
+			}
+		</ul>
 	</main>
 </Base>
 
@@ -65,11 +62,6 @@ Astro.response.headers.set('cache-control', 'no-cache');
 
 	.intro p {
 		margin: 0.5rem 0 0;
-		color: var(--muted);
-	}
-
-	.empty {
-		text-align: center;
 		color: var(--muted);
 	}
 

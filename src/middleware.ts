@@ -19,6 +19,17 @@ async function authenticateAdmin(request: Request): Promise<string> {
 	return verifyAdmin(request.headers.get('cf-access-jwt-assertion'), readAccessConfig(env));
 }
 
+/** Whether a public-page visitor is a signed-in admin. A missing or non-admin login is simply "no". */
+async function isSignedInAdmin(request: Request): Promise<boolean> {
+	try {
+		await authenticateAdmin(request);
+		return true;
+	} catch (error) {
+		if (error instanceof AccessDenied) return false;
+		throw error;
+	}
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
 	// One address for the site: www.jackieandryan.us -> jackieandryan.us, same path.
 	if (context.url.hostname.startsWith('www.')) {
@@ -27,7 +38,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		return Response.redirect(target.toString(), 301);
 	}
 
-	if (!isAdminPath(context.url.pathname)) return next();
+	if (!isAdminPath(context.url.pathname)) {
+		if (context.url.pathname.startsWith('/media/')) return next();
+		// Public pages work for everyone; they only show admin links (the header
+		// "Admin" button, "Edit post") when the visitor is a signed-in admin.
+		context.locals.isAdmin = await isSignedInAdmin(context.request);
+		const response = await next();
+		// A page with admin links must not be cached and shown to someone else.
+		if (context.locals.isAdmin) response.headers.set('cache-control', 'private, no-cache');
+		return response;
+	}
 
 	// Changes must come from the admin pages themselves, not from another site
 	// riding on the admin's Access login cookie.
@@ -41,6 +61,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 	try {
 		context.locals.adminEmail = await authenticateAdmin(context.request);
+		context.locals.isAdmin = true;
 	} catch (error) {
 		if (error instanceof AccessDenied) {
 			console.warn(`Admin access denied for ${context.url.pathname}: ${error.message}`);

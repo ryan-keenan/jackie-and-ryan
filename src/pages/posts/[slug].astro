@@ -27,6 +27,7 @@ Astro.response.headers.set('cache-control', 'no-cache');
 			{(dates || post.location) && <p class="meta">{[post.location, dates].filter(Boolean).join(' · ')}</p>}
 			<h1>{post.title}</h1>
 			{post.summary && <p class="summary">{post.summary}</p>}
+			{Astro.locals.isAdmin && <a class="edit-link" href={`/admin/posts/${post.id}`}>Edit post</a>}
 		</header>
 		{map && <TripMap view={map} />}
 		<PostBody blocks={blocks} photos={photos} videos={videos} />
@@ -61,5 +62,21 @@ Astro.response.headers.set('cache-control', 'no-cache');
 		font-size: 1.25rem;
 		font-style: italic;
 		color: var(--muted);
+	}
+
+	.edit-link {
+		display: inline-block;
+		margin-top: 1.25rem;
+		padding: 0.3rem 0.9rem;
+		border: 1px solid var(--rule);
+		border-radius: 999px;
+		font-size: 0.85rem;
+		color: var(--muted);
+		text-decoration: none;
+	}
+
+	.edit-link:hover {
+		border-color: var(--accent);
+		color: var(--accent);
 	}
 </style>
