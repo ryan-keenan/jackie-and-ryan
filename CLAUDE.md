@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Jackie & Ryan's site, being turned from a single static wedding page into an AI-assisted life journal. Admins upload photos and notes, an AI model drafts a blog post, and they review and publish it. The full plan, including architecture and phases, is in `docs/journal-plan.md`.
 
 - **Journal:** an Astro app deployed to Cloudflare Workers using the `@astrojs/cloudflare` adapter (`astro.config.mjs`, `wrangler.jsonc`).
-- **Wedding page (December 21st, 2025):** the original static site, preserved unchanged in `public/wedding/` and served at `/wedding/`.
+- **Wedding page (December 21st, 2025):** the original static site, kept in `public/wedding/` and served at `/wedding/`. It is now an archive entry: the countdown and RSVP were removed and the event text is in past tense, but its design, story and photos are unchanged. It appears as a card on the journal homepage.
 
 ## Development Commands
 
@@ -97,7 +97,7 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 After adding a dependency, or when the dev server re-optimizes dependencies, it can fail with "file does not exist ... deps_ssr/handler". Fix it by running `npx astro dev stop`, then `rm -rf node_modules/.vite`, then restarting. Production builds are unaffected.
 
 ### Wedding page (`public/wedding/`)
-- **index.html:** a single-page layout with a hero section, photo gallery, video embed, and RSVP link.
+- **index.html:** a single-page layout with a hero section, event details, the story, a photo gallery, a video embed and a link back to the journal.
 - **script.js:**
   - Lightbox gallery: click any photo to open it; ESC or a click outside closes it.
   - Fade-in-on-scroll animations, using an Intersection Observer.
@@ -111,7 +111,6 @@ All asset paths in the wedding page are relative, so it works from the `/wedding
 ### External Integrations (wedding page)
 - **Google Fonts:** Fraunces (headings) and Poppins (body text).
 - **Vimeo:** the embedded video player.
-- **Google Forms:** the RSVP link.
 - **Google Maps:** the venue location link.
 
 ## Testing Checklist
@@ -120,4 +119,4 @@ When making changes, verify:
 2. The wedding page lightbox opens and closes properly on photo click.
 3. Mobile responsiveness: hero box positioning and font sizes.
 4. The Vimeo video loads and plays.
-5. All external links work (RSVP, Maps).
+5. All external links work (Maps, and the story's LinkedIn links).

@@ -1,35 +1,3 @@
-// Countdown functionality
-function updateCountdown() {
-    // Create wedding date in Pacific timezone
-    const weddingDate = new Date('December 21, 2025 11:30:00 PST');
-    const now = new Date();
-    
-    console.log('Wedding date:', weddingDate.toISOString());
-    console.log('Current date:', now.toISOString());
-    
-    const timeDiff = weddingDate.getTime() - now.getTime();
-    console.log('Time difference (ms):', timeDiff);
-    
-    if (timeDiff > 0) {
-        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-        console.log('Days calculated:', days);
-        
-        const countdownElement = document.getElementById('days');
-        if (countdownElement) {
-            countdownElement.textContent = days;
-            console.log('Updated countdown element with:', days);
-        } else {
-            console.error('Countdown element not found!');
-        }
-    } else {
-        console.log('Wedding date has passed');
-        const countdownElement = document.getElementById('days');
-        if (countdownElement) {
-            countdownElement.textContent = '0';
-        }
-    }
-}
-
 // Wait for DOM to be ready and prevent multiple initializations
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeWebsite);
@@ -46,10 +14,6 @@ function initializeWebsite() {
     window.lightboxInitialized = true;
     console.log('Initializing website...');
     
-    // Start the countdown
-    updateCountdown();
-    setInterval(updateCountdown, 60000); // Update every minute
-
     // ==================== SCROLL NAVIGATION ====================
 
     // Smooth scroll for navigation links with offset
