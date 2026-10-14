@@ -4,13 +4,16 @@ import { parseBody, type Block } from '../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin, getVideosForPost, latestJobForPost, type VideoRow } from '../../../lib/db';
 import { formatDuration, formatTakenAt } from '../../../lib/format';
 import { thumbnailUrl } from '../../../lib/stream';
-import { locatedCount, MAP_MODE_LABELS, MAP_MODES, mapSourceHint } from '../../../lib/map';
+import { locatedCount, MAP_MODE_LABELS, MAP_MODES, MAP_STYLE_LABELS, MAP_STYLES, mapSourceHint, mapView } from '../../../lib/map';
+import TripMap from '../../../components/TripMap.astro';
 
 const post = await getPostForAdmin(Astro.params.id!);
 if (!post) return new Response('Not found', { status: 404 });
 const photos = await getPhotosForAdmin(post.id);
 const videos = await getVideosForPost(post.id);
 const job = await latestJobForPost(post.id);
+// The preview is built at 'fit' even when the map is off, so switching it on shows it right away.
+const mapPreview = mapView('fit', photos, { lat: post.place_lat, lon: post.place_lon });
 
 const videoThumb = (video: VideoRow) =>
 	video.status === 'ready' && video.playback_host ? thumbnailUrl(video.playback_host, video.stream_uid, 480) : null;
@@ -100,11 +103,29 @@ function jobText(): string {
 				</div>
 				<div class="span-2">
 					<label for="map_mode">Map under the title</label>
-					<select id="map_mode" name="map_mode">
+					<select id="map_mode" name="map_mode" data-map-setting>
 						{MAP_MODES.map((mode) => <option value={mode} selected={post.map_mode === mode}>{MAP_MODE_LABELS[mode]}</option>)}
 					</select>
 					<p class="field-hint" data-map-hint data-located={locatedCount(photos)}>{mapSourceHint(locatedCount(photos), photos.length, post.place_name)}</p>
 				</div>
+				<div class="span-2">
+					<label for="map_style">Map style</label>
+					<div class="style-picker">
+						<button type="button" class="button secondary" data-style-step="-1" aria-label="Previous map style">‹</button>
+						<select id="map_style" name="map_style" data-map-setting>
+							{MAP_STYLES.map((style) => <option value={style} selected={post.map_style === style}>{MAP_STYLE_LABELS[style]}</option>)}
+						</select>
+						<button type="button" class="button secondary" data-style-step="1" aria-label="Next map style">›</button>
+					</div>
+					<p class="field-hint">The preview below changes as you pick; Save details to keep it.</p>
+				</div>
+				{
+					mapPreview && (
+						<div class="span-4 map-preview">
+							<TripMap view={mapPreview} style={post.map_style} preview />
+						</div>
+					)
+				}
 				<div class="span-4">
 					<label for="author_notes">Notes</label>
 					<textarea id="author_notes" name="author_notes" maxlength="20000" placeholder="What happened? Rough notes are fine: places, who you were with, funny moments, what you ate. The AI will write the post from these and the photos.">{post.author_notes}</textarea>
@@ -285,6 +306,7 @@ function jobText(): string {
 			trip_end: value('trip_end') || null,
 			visibility: value('visibility'),
 			map_mode: value('map_mode'),
+			map_style: value('map_style'),
 			author_notes: value('author_notes'),
 		};
 	}
@@ -306,6 +328,25 @@ function jobText(): string {
 			setStatus(saveStatus, (error as Error).message, false);
 		}
 	});
+
+	// ---- Map preview ----
+
+	const mapFigure = document.querySelector<HTMLElement>('.map-preview .trip-map');
+	const modeSelect = form.querySelector<HTMLSelectElement>('#map_mode')!;
+	const styleSelect = form.querySelector<HTMLSelectElement>('#map_style')!;
+	function updateMapPreview() {
+		mapFigure?.dispatchEvent(new CustomEvent('trip-map:update', { detail: { mode: modeSelect.value, style: styleSelect.value } }));
+	}
+	modeSelect.addEventListener('change', updateMapPreview);
+	styleSelect.addEventListener('change', updateMapPreview);
+	for (const button of document.querySelectorAll<HTMLButtonElement>('[data-style-step]')) {
+		button.addEventListener('click', () => {
+			const count = styleSelect.options.length;
+			styleSelect.selectedIndex = (styleSelect.selectedIndex + Number(button.dataset.styleStep) + count) % count;
+			updateMapPreview();
+		});
+	}
+	updateMapPreview();
 
 	// ---- Photo cards ----
 
@@ -755,6 +796,27 @@ function jobText(): string {
 
 	.span-2 {
 		grid-column: span 2;
+	}
+
+	.style-picker {
+		display: flex;
+		gap: 0.4rem;
+	}
+
+	.style-picker select {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.style-picker button {
+		padding-inline: 0.8rem;
+		font-size: 1.1rem;
+		line-height: 1;
+	}
+
+	.map-preview :global(.trip-map) {
+		width: 100%;
+		margin: 0;
 	}
 
 	.field-hint {

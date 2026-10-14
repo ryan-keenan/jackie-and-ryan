@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import type { MapMode } from './map';
+import type { MapMode, MapStyle } from './map';
 
 export interface PostRow {
 	id: string;
@@ -14,6 +14,7 @@ export interface PostRow {
 	cover_photo_id: string | null;
 	body: string;
 	map_mode: MapMode;
+	map_style: MapStyle;
 	/** Where the Location text points, for the map when no photo has GPS. */
 	place_lat: number | null;
 	place_lon: number | null;
@@ -43,7 +44,7 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, place_lat, place_lon, place_name, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, place_lat, place_lon, place_name, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
 	const { results } = await env.DB.prepare(
@@ -188,6 +189,7 @@ export interface PostDetailsUpdate {
 	trip_end?: string | null;
 	location?: string;
 	map_mode?: MapMode;
+	map_style?: MapStyle;
 	place_lat?: number | null;
 	place_lon?: number | null;
 	place_name?: string;
@@ -201,6 +203,7 @@ const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
 	'trip_end',
 	'location',
 	'map_mode',
+	'map_style',
 	'place_lat',
 	'place_lon',
 	'place_name',

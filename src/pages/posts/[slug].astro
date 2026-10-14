@@ -29,7 +29,7 @@ Astro.response.headers.set('cache-control', 'no-cache');
 			{post.summary && <p class="summary">{post.summary}</p>}
 			{Astro.locals.isAdmin && <a class="edit-link" href={`/admin/posts/${post.id}`}>Edit post</a>}
 		</header>
-		{map && <TripMap view={map} />}
+		{map && <TripMap view={map} style={post.map_style} />}
 		<PostBody blocks={blocks} photos={photos} videos={videos} />
 	</main>
 	<Lightbox />

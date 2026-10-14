@@ -16,8 +16,28 @@ export const MAP_MODE_LABELS: Record<MapMode, string> = {
 	world: 'World',
 };
 
+/**
+ * How the map is drawn. All are free for a non-commercial site; the drawing
+ * code is in src/scripts/trip-map.ts. Keep this list in step with the CHECK
+ * constraint in migrations/0006_map_style.sql.
+ */
+export const MAP_STYLES = ['light', 'light-topo', 'old-world', 'satellite', 'satellite-topo', 'terrain-3d', 'liberty', 'fiord', 'globe'] as const;
+export type MapStyle = (typeof MAP_STYLES)[number];
+
+export const MAP_STYLE_LABELS: Record<MapStyle, string> = {
+	light: 'Light',
+	'light-topo': 'Light topo (relief and contours)',
+	'old-world': 'Old-world',
+	satellite: 'Satellite',
+	'satellite-topo': 'Satellite with contours',
+	'terrain-3d': '3D terrain',
+	liberty: 'Classic',
+	fiord: 'Moody blue',
+	globe: 'Globe (always shows the whole planet)',
+};
+
 /** MapLibre zoom level for each fixed mode. */
-const ZOOM: Record<Exclude<MapMode, 'off' | 'fit'>, number> = {
+export const ZOOM: Record<Exclude<MapMode, 'off' | 'fit'>, number> = {
 	city: 11,
 	region: 6.5,
 	country: 4.2,

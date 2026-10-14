@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { z } from 'astro/zod';
-import { MAP_MODES } from '../../../../lib/map';
+import { MAP_MODES, MAP_STYLES } from '../../../../lib/map';
 import { getPostForAdmin, updatePostDetails, type PostDetailsUpdate } from '../../../../lib/db';
 import { GeocodeFailed, geocodePlace } from '../../../../lib/geocode';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
@@ -20,6 +20,7 @@ const detailsSchema = z
 		trip_end: isoDate.nullable(),
 		location: z.string().trim().max(200),
 		map_mode: z.enum(MAP_MODES),
+		map_style: z.enum(MAP_STYLES),
 	})
 	.partial()
 	.strict()

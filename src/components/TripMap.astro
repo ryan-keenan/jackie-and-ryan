@@ -1,95 +1,96 @@
 ---
-import type { MapView } from '../lib/map';
+import type { MapStyle, MapView } from '../lib/map';
 
-// Map of where a post's photos were taken. MapLibre and the OpenFreeMap tiles
-// load only when the map scrolls near view, so posts without a map, or readers
-// who don't scroll to it, pay nothing.
+// Map of where a post's photos were taken. MapLibre and the map tiles load only
+// when the map scrolls near view, so posts without a map, or readers who don't
+// scroll to it, pay nothing. The drawing code is in src/scripts/trip-map.ts.
+//
+// With `preview`, the admin page can redraw the map by dispatching a
+// "trip-map:update" event on the figure with { mode, style } as its detail.
 
 interface Props {
 	view: MapView;
+	style: MapStyle;
+	preview?: boolean;
 }
 
-const { view } = Astro.props;
+const { view, style, preview = false } = Astro.props;
 ---
 
-<figure class="trip-map">
+<figure class="trip-map" data-style={style} data-preview={preview ? '' : undefined}>
 	<div
 		class="trip-map-canvas"
 		data-map={JSON.stringify(view)}
 		role="img"
 		aria-label={view.source === 'photos' ? 'Map of where the photos were taken' : 'Map of where the trip was'}
-	></div>
+	>
+	</div>
+	<div class="trip-map-paper" aria-hidden="true">
+		<svg class="trip-map-compass" viewBox="-50 -50 100 100">
+			<g fill="none" stroke="#5a3d22" stroke-width="1.2"><circle r="30"></circle><circle r="26" stroke-width="0.6"></circle></g>
+			<g fill="#5a3d22" stroke="#5a3d22" stroke-width="1">
+				<polygon points="0,-46 6,0 0,6 -6,0"></polygon>
+				<polygon points="0,46 6,0 0,-6 -6,0" fill="#e9dbbb"></polygon>
+				<polygon points="46,0 0,5 -6,0 0,-5" fill="#e9dbbb"></polygon>
+				<polygon points="-46,0 0,5 6,0 0,-5"></polygon>
+			</g>
+			<text y="-48" font-family="Fraunces, serif" font-size="11" text-anchor="middle" fill="#5a3d22">N</text>
+		</svg>
+	</div>
+	{preview && <p class="trip-map-off">No map on this post</p>}
 </figure>
 
 <script>
-	import type { MapView } from '../lib/map';
+	import type { MapMode, MapStyle, MapView } from '../lib/map';
 
-	// OpenFreeMap: free vector tiles, no account or key. Positron is a pale
-	// base map; it's warmed below to match the site's palette.
-	const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
-	const ACCENT = '#b8935f';
+	type Update = { mode: MapMode; style: MapStyle };
 
-	async function render(container: HTMLElement) {
+	for (const figure of document.querySelectorAll<HTMLElement>('.trip-map')) {
+		const container = figure.querySelector<HTMLElement>('.trip-map-canvas')!;
 		const view = JSON.parse(container.dataset.map!) as MapView;
-		const [{ Map, Marker, NavigationControl, setWorkerUrl }, { default: workerUrl }] = await Promise.all([
-			import('maplibre-gl'),
-			// MapLibre looks for its worker next to its own file, which the bundler
-			// moves; give it a worker that Vite builds as a standalone file.
-			import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'),
-			import('maplibre-gl/dist/maplibre-gl.css'),
-		]);
-		setWorkerUrl(workerUrl);
+		let latest: Update = { mode: view.mode, style: figure.dataset.style as MapStyle };
+		let drawn: Promise<import('../scripts/trip-map').TripMap> | null = null;
 
-		const map = new Map({
-			container,
-			style: STYLE_URL,
-			center: view.center,
-			zoom: view.zoom ?? 4,
-			// Page scrolling stays normal; two fingers (or Ctrl/Cmd + scroll) move the map.
-			cooperativeGestures: true,
-		});
-		map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+		const fail = (error: unknown) => {
+			console.error('Map failed to load', error);
+			container.textContent = `The map could not be loaded: ${(error as Error).message}`;
+			container.classList.add('trip-map-error');
+		};
 
-		if (view.mode === 'fit') {
-			// The cap keeps a single pin, or photos close together, showing the
-			// surrounding area (about 20 km across) rather than a few streets.
-			map.fitBounds(view.bounds, { padding: 60, maxZoom: 11, duration: 0 });
-		}
+		const draw = () => {
+			// The admin preview may have changed the settings before the map was first drawn.
+			const mode = latest.mode === 'off' ? view.mode : latest.mode;
+			drawn ??= import('../scripts/trip-map').then(({ drawTripMap }) => drawTripMap(container, { ...view, mode }, latest.style));
+			drawn.catch(fail);
+		};
 
-		map.on('load', () => {
-			if (map.getLayer('background')) map.setPaintProperty('background', 'background-color', '#f6f1ea');
-			if (map.getLayer('water')) map.setPaintProperty('water', 'fill-color', '#d6e2e6');
-			if (map.getLayer('park')) map.setPaintProperty('park', 'fill-color', '#e6ead9');
-		});
-
-		for (const point of view.points) {
-			const dot = document.createElement('div');
-			dot.className = 'trip-map-pin';
-			new Marker({ element: dot }).setLngLat(point).addTo(map);
-		}
-		container.style.setProperty('--pin', ACCENT);
-	}
-
-	for (const container of document.querySelectorAll<HTMLElement>('.trip-map-canvas')) {
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries.some((entry) => entry.isIntersecting)) {
 					observer.disconnect();
-					render(container).catch((error) => {
-						console.error('Map failed to load', error);
-						container.textContent = 'The map could not be loaded.';
-						container.classList.add('trip-map-error');
-					});
+					draw();
 				}
 			},
 			{ rootMargin: '300px' },
 		);
 		observer.observe(container);
+
+		if (figure.hasAttribute('data-preview')) {
+			figure.addEventListener('trip-map:update', (event) => {
+				latest = (event as CustomEvent<Update>).detail;
+				figure.dataset.style = latest.style;
+				figure.toggleAttribute('data-off', latest.mode === 'off');
+				if (latest.mode === 'off' || !drawn) return;
+				const { mode, style } = latest;
+				drawn.then((map) => map.update(mode, style)).catch(fail);
+			});
+		}
 	}
 </script>
 
 <style>
 	.trip-map {
+		position: relative;
 		width: min(64rem, 100vw - 32px);
 		margin: 0 auto 2.5rem;
 	}
@@ -108,6 +109,47 @@ const { view } = Astro.props;
 		background: var(--pin, #b8935f);
 		border: 2px solid #fff;
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+	}
+
+	/* Old-world finish: paper grain, a vignette and a compass rose over the map. */
+	.trip-map-paper {
+		display: none;
+		position: absolute;
+		inset: 0;
+		border-radius: 6px;
+		pointer-events: none;
+		mix-blend-mode: multiply;
+		background:
+			radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(92, 60, 25, 0.35) 100%),
+			url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+	}
+
+	.trip-map[data-style='old-world'] .trip-map-paper {
+		display: block;
+	}
+
+	.trip-map-compass {
+		position: absolute;
+		left: 14px;
+		bottom: 14px;
+		width: 74px;
+		height: 74px;
+		opacity: 0.8;
+	}
+
+	.trip-map-off {
+		display: none;
+		position: absolute;
+		inset: 0;
+		margin: 0;
+		place-items: center;
+		background: rgba(255, 255, 255, 0.85);
+		color: var(--muted);
+		border-radius: 6px;
+	}
+
+	.trip-map[data-off] .trip-map-off {
+		display: grid;
 	}
 
 	.trip-map-error {

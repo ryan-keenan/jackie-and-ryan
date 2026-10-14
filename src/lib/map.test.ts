@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { locatedCount, mapView } from './map';
+import { locatedCount, MAP_STYLE_LABELS, MAP_STYLES, mapView } from './map';
 
 const taipei = { lat: 25.033964, lon: 121.564468 };
 const nearby = { lat: 25.031101, lon: 121.56012 }; // ~500 m away, in the same rounded ~1 km cell
@@ -47,5 +48,14 @@ describe('mapView with the post\'s place', () => {
 describe('locatedCount', () => {
 	it('counts photos with both coordinates', () => {
 		expect(locatedCount([taipei, noGps, { lat: 1, lon: null }])).toBe(1);
+	});
+});
+
+describe('MAP_STYLES', () => {
+	it('matches the database constraint and has a label for each style', () => {
+		const migration = readFileSync(new URL('../../migrations/0006_map_style.sql', import.meta.url), 'utf8');
+		const allowed = [...migration.match(/map_style IN \(([^)]*)\)/)![1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+		expect(allowed).toEqual([...MAP_STYLES]);
+		expect(Object.keys(MAP_STYLE_LABELS)).toEqual([...MAP_STYLES]);
 	});
 });

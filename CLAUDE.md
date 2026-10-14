@@ -89,7 +89,13 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
   - If the full text matches nothing, leading comma-separated parts are dropped ("Black Wall, Donner Summit" finds Donner Summit).
   - The admin page shows the matched place, because names are ambiguous ("Eagle Lake, CA" matches one in Tulare County). A more specific Location fixes a wrong match.
   - If the lookup service fails, the save fails with an error rather than keeping a stale place.
-- **Rendering:** `src/lib/map.ts` turns photo GPS positions (or the looked-up place) into a map view, and `src/components/TripMap.astro` draws it under the post title with MapLibre and free OpenFreeMap tiles (no key needed). MapLibre loads only when the map scrolls near view.
+- **Rendering:** `src/lib/map.ts` turns photo GPS positions (or the looked-up place) into a map view. `src/components/TripMap.astro` places it under the post title, and `src/scripts/trip-map.ts` draws it with MapLibre. MapLibre loads only when the map scrolls near view.
+- **Styles:** each post also has a `map_style`, one of `MAP_STYLES` in `src/lib/map.ts` (the database CHECK constraint must match; a test enforces it). New and existing posts start with `light`.
+  - **Drawn maps:** `light` (OpenFreeMap Positron, warmed to the site palette), `liberty` and `fiord` are OpenFreeMap styles. `light-topo` adds relief shading and contour lines in feet. `old-world` recolors Positron as parchment and ink, and TripMap.astro adds paper grain and a compass rose over it.
+  - **Satellite:** `satellite`, `satellite-topo`, `terrain-3d` (tilted, over real elevation) and `globe` (always the whole planet) use EOX Sentinel-2 cloudless imagery. It is 10 m per pixel and licensed CC BY-NC-SA, which allows this non-commercial site; a commercial use would need a different source.
+  - **Elevation:** relief, 3D terrain and contours come from AWS Terrain Tiles. `maplibre-contour` computes the contour lines in the browser.
+  - None of these needs a key or an account.
+- **Choosing a style:** the admin post page has a "Map style" dropdown with previous/next buttons and a live preview that redraws as the style or zoom changes. Changes are kept only after "Save details".
 - **Privacy:** positions are rounded to 2 decimal places (about 1 km) before reaching the page, so a pin never marks an exact spot.
 - **MapLibre's worker:** it's loaded through `setWorkerUrl` with a Vite `?worker&url` import. Without that, the bundler moves the worker file and the map draws no tiles.
 

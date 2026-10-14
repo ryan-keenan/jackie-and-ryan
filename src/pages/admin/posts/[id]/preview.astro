@@ -30,7 +30,7 @@ const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.plac
 			<h1>{post.title}</h1>
 			{post.summary && <p class="summary">{post.summary}</p>}
 		</header>
-		{map && <TripMap view={map} />}
+		{map && <TripMap view={map} style={post.map_style} />}
 		<PostBody blocks={blocks} photos={photos} videos={videos} mediaBase="/api/admin/media/" />
 	</main>
 	<Lightbox />
