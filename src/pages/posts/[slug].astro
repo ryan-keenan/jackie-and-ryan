@@ -15,7 +15,7 @@ const photos = await getPhotosForPost(post.id);
 const videos = await getVideosForPost(post.id);
 const blocks = parseBody(post.body, photos.map((photo) => photo.id), videos.map((video) => video.id));
 const dates = formatTripDates(post.trip_start, post.trip_end);
-const map = mapView(post.map_mode, photos);
+const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.place_lon });
 
 // Browsers re-check every visit, so edits and unpublishing show up immediately.
 Astro.response.headers.set('cache-control', 'no-cache');

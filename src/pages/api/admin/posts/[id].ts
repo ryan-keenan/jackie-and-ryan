@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
 import { z } from 'astro/zod';
 import { MAP_MODES } from '../../../../lib/map';
-import { updatePostDetails } from '../../../../lib/db';
+import { getPostForAdmin, updatePostDetails, type PostDetailsUpdate } from '../../../../lib/db';
+import { GeocodeFailed, geocodePlace } from '../../../../lib/geocode';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
 
 const isoDate = z
@@ -27,9 +28,30 @@ const detailsSchema = z
 		path: ['trip_end'],
 	});
 
+// When the Location changes, it is looked up so the map has a place to show when
+// no photo has GPS. The reply includes the matched place (or null for no match)
+// so the page can show it; a failed lookup fails the save rather than leaving
+// the map pointing at the old place.
 export const PATCH: APIRoute = ({ params, request }) =>
 	handle(async () => {
-		const update = parseWith(detailsSchema, await readJson(request));
-		if (!(await updatePostDetails(params.id!, update))) throw new BadRequest('Post not found', 404);
-		return json({ ok: true });
+		const details = parseWith(detailsSchema, await readJson(request));
+		const post = await getPostForAdmin(params.id!);
+		if (!post) throw new BadRequest('Post not found', 404);
+		const update: PostDetailsUpdate = { ...details };
+		let place: { name: string } | null | undefined;
+		if (details.location !== undefined && details.location !== post.location) {
+			let found;
+			try {
+				found = details.location ? await geocodePlace(details.location) : null;
+			} catch (error) {
+				if (!(error instanceof GeocodeFailed)) throw error;
+				throw new BadRequest(`Not saved: couldn\u2019t look up the Location for the map. ${error.message}. Try again.`, 502);
+			}
+			update.place_lat = found?.lat ?? null;
+			update.place_lon = found?.lon ?? null;
+			update.place_name = found?.name ?? '';
+			place = found ? { name: found.name } : null;
+		}
+		if (!(await updatePostDetails(post.id, update))) throw new BadRequest('Post not found', 404);
+		return json({ ok: true, place });
 	});

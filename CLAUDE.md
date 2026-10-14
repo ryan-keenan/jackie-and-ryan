@@ -83,8 +83,13 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 - **Caching:** public pages send `cache-control: no-cache`, so edits and unpublishing show up on the next visit.
 
 ### Maps
-- **Setting:** each post has a `map_mode`: `off`, `fit`, `city`, `region`, `country` or `world`. New posts default to `country`.
-- **Rendering:** `src/lib/map.ts` turns photo GPS positions into a map view, and `src/components/TripMap.astro` draws it under the post title with MapLibre and free OpenFreeMap tiles (no key needed). MapLibre loads only when the map scrolls near view.
+- **Setting:** each post has a `map_mode`: `off`, `fit`, `city`, `region`, `country` or `world`. New posts default to `fit`, the area where the photos were taken. `fit` zooms in no further than about 20 km across, so a single pin still shows its surroundings.
+- **Photos without GPS:** phones often strip location when photos are shared, so many uploads have none. When no photo on a post has a position, the map uses the post's Location text instead.
+  - Saving a changed Location looks it up with OpenStreetMap's free Nominatim service (`src/lib/geocode.ts`) and stores the match in `place_lat`, `place_lon` and `place_name`.
+  - If the full text matches nothing, leading comma-separated parts are dropped ("Black Wall, Donner Summit" finds Donner Summit).
+  - The admin page shows the matched place, because names are ambiguous ("Eagle Lake, CA" matches one in Tulare County). A more specific Location fixes a wrong match.
+  - If the lookup service fails, the save fails with an error rather than keeping a stale place.
+- **Rendering:** `src/lib/map.ts` turns photo GPS positions (or the looked-up place) into a map view, and `src/components/TripMap.astro` draws it under the post title with MapLibre and free OpenFreeMap tiles (no key needed). MapLibre loads only when the map scrolls near view.
 - **Privacy:** positions are rounded to 2 decimal places (about 1 km) before reaching the page, so a pin never marks an exact spot.
 - **MapLibre's worker:** it's loaded through `setWorkerUrl` with a Vite `?worker&url` import. Without that, the bundler moves the worker file and the map draws no tiles.
 

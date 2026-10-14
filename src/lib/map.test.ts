@@ -5,15 +5,16 @@ const taipei = { lat: 25.033964, lon: 121.564468 };
 const nearby = { lat: 25.031101, lon: 121.56012 }; // ~500 m away, in the same rounded ~1 km cell
 const longdong = { lat: 25.1103, lon: 121.9221 };
 const noGps = { lat: null, lon: null };
+const noPlace = noGps;
 
 describe('mapView', () => {
-	it('returns nothing when the map is off or no photo has a position', () => {
-		expect(mapView('off', [taipei])).toBeNull();
-		expect(mapView('country', [noGps, noGps])).toBeNull();
+	it('returns nothing when the map is off or neither the photos nor the place has a position', () => {
+		expect(mapView('off', [taipei], noPlace)).toBeNull();
+		expect(mapView('country', [noGps, noGps], noPlace)).toBeNull();
 	});
 
 	it('rounds positions to about 1 km and drops duplicates', () => {
-		const view = mapView('city', [taipei, nearby, noGps, longdong])!;
+		const view = mapView('city', [taipei, nearby, noGps, longdong], noPlace)!;
 		expect(view.points).toEqual([
 			[121.56, 25.03],
 			[121.92, 25.11],
@@ -21,14 +22,25 @@ describe('mapView', () => {
 	});
 
 	it('centers on the middle of the photos and sets the zoom for fixed modes', () => {
-		const view = mapView('country', [taipei, longdong])!;
+		const view = mapView('country', [taipei, longdong], noPlace)!;
 		expect(view.center).toEqual([121.74, 25.07]);
 		expect(view.zoom).toBe(4.2);
 		expect(view.bounds).toEqual([121.56, 25.03, 121.92, 25.11]);
 	});
 
 	it('leaves zoom to the bounds in fit mode', () => {
-		expect(mapView('fit', [taipei, longdong])!.zoom).toBeNull();
+		expect(mapView('fit', [taipei, longdong], noPlace)!.zoom).toBeNull();
+	});
+});
+
+describe('mapView with the post\'s place', () => {
+	it('uses the place only when no photo has a position', () => {
+		const place = { lat: 39.3415556, lon: -120.3399113 };
+		const view = mapView('fit', [noGps], place)!;
+		expect(view.source).toBe('place');
+		expect(view.points).toEqual([[-120.34, 39.34]]);
+		expect(mapView('fit', [taipei], place)!.source).toBe('photos');
+		expect(mapView('off', [noGps], place)).toBeNull();
 	});
 });
 

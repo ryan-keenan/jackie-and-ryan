@@ -14,6 +14,10 @@ export interface PostRow {
 	cover_photo_id: string | null;
 	body: string;
 	map_mode: MapMode;
+	/** Where the Location text points, for the map when no photo has GPS. */
+	place_lat: number | null;
+	place_lon: number | null;
+	place_name: string;
 	published_at: string | null;
 }
 
@@ -39,7 +43,7 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, place_lat, place_lon, place_name, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
 	const { results } = await env.DB.prepare(
@@ -170,7 +174,7 @@ export async function createDraftPost(input: { id: string; slug: string; title: 
 	const now = new Date().toISOString();
 	await env.DB.prepare(
 		`INSERT INTO posts (id, slug, title, status, visibility, map_mode, created_by, created_at, updated_at)
-		 VALUES (?, ?, ?, 'draft', 'public', 'country', ?, ?, ?)`,
+		 VALUES (?, ?, ?, 'draft', 'public', 'fit', ?, ?, ?)`,
 	)
 		.bind(input.id, input.slug, input.title, input.createdBy, now, now)
 		.run();
@@ -184,6 +188,9 @@ export interface PostDetailsUpdate {
 	trip_end?: string | null;
 	location?: string;
 	map_mode?: MapMode;
+	place_lat?: number | null;
+	place_lon?: number | null;
+	place_name?: string;
 }
 
 const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
@@ -194,6 +201,9 @@ const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
 	'trip_end',
 	'location',
 	'map_mode',
+	'place_lat',
+	'place_lon',
+	'place_name',
 ];
 
 export async function updatePostDetails(id: string, update: PostDetailsUpdate): Promise<boolean> {

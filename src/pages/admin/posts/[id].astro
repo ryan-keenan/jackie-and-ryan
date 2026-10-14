@@ -4,7 +4,7 @@ import { parseBody, type Block } from '../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin, getVideosForPost, latestJobForPost, type VideoRow } from '../../../lib/db';
 import { formatDuration, formatTakenAt } from '../../../lib/format';
 import { thumbnailUrl } from '../../../lib/stream';
-import { locatedCount, MAP_MODE_LABELS, MAP_MODES } from '../../../lib/map';
+import { locatedCount, MAP_MODE_LABELS, MAP_MODES, mapSourceHint } from '../../../lib/map';
 
 const post = await getPostForAdmin(Astro.params.id!);
 if (!post) return new Response('Not found', { status: 404 });
@@ -103,9 +103,7 @@ function jobText(): string {
 					<select id="map_mode" name="map_mode">
 						{MAP_MODES.map((mode) => <option value={mode} selected={post.map_mode === mode}>{MAP_MODE_LABELS[mode]}</option>)}
 					</select>
-					<p class="field-hint">
-						{locatedCount(photos)} of {photos.length} photos have a location. Pins are placed to within about 1 km, never the exact spot.
-					</p>
+					<p class="field-hint" data-map-hint data-located={locatedCount(photos)}>{mapSourceHint(locatedCount(photos), photos.length, post.place_name)}</p>
 				</div>
 				<div class="span-4">
 					<label for="author_notes">Notes</label>
@@ -246,6 +244,7 @@ function jobText(): string {
 	import { BlockEditor, type EditorPhoto, type EditorVideo } from '../../../scripts/block-editor';
 	import { uploadVideo, type VideoState } from '../../../scripts/video-upload';
 	import { formatDuration } from '../../../lib/format';
+	import { mapSourceHint } from '../../../lib/map';
 	import { thumbnailUrl } from '../../../lib/stream';
 
 	const workspace = document.querySelector<HTMLElement>('.workspace')!;
@@ -262,7 +261,7 @@ function jobText(): string {
 		element.className = `${element.className.replace(/\s*status-(ok|error)/g, '')} ${ok ? 'status-ok' : 'status-error'}`;
 	}
 
-	async function sendJson(url: string, method: string, body?: unknown): Promise<void> {
+	async function sendJson(url: string, method: string, body?: unknown): Promise<unknown> {
 		const response = await fetch(url, {
 			method,
 			headers: body === undefined ? undefined : { 'content-type': 'application/json' },
@@ -272,6 +271,7 @@ function jobText(): string {
 			const data = (await response.json().catch(() => ({}))) as { error?: string };
 			throw new Error(data.error ?? `Request failed (HTTP ${response.status})`);
 		}
+		return response.json().catch(() => undefined);
 	}
 
 	// ---- Post details ----
@@ -294,8 +294,13 @@ function jobText(): string {
 		const details = detailsFromForm();
 		setStatus(saveStatus, 'Saving…', true);
 		try {
-			await sendJson(`/api/admin/posts/${postId}`, 'PATCH', details);
+			const result = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', details)) as { place?: { name: string } | null };
 			document.querySelector('[data-title-display]')!.textContent = details.title;
+			// A changed Location was looked up again; show what it matched.
+			if (result.place !== undefined) {
+				const hint = document.querySelector<HTMLElement>('[data-map-hint]')!;
+				hint.textContent = mapSourceHint(Number(hint.dataset.located), grid.children.length, result.place?.name ?? '');
+			}
 			setStatus(saveStatus, 'Saved', true);
 		} catch (error) {
 			setStatus(saveStatus, (error as Error).message, false);

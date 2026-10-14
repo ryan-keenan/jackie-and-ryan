@@ -13,7 +13,12 @@ const { view } = Astro.props;
 ---
 
 <figure class="trip-map">
-	<div class="trip-map-canvas" data-map={JSON.stringify(view)} role="img" aria-label="Map of where the photos were taken"></div>
+	<div
+		class="trip-map-canvas"
+		data-map={JSON.stringify(view)}
+		role="img"
+		aria-label={view.source === 'photos' ? 'Map of where the photos were taken' : 'Map of where the trip was'}
+	></div>
 </figure>
 
 <script>
@@ -46,7 +51,9 @@ const { view } = Astro.props;
 		map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 
 		if (view.mode === 'fit') {
-			map.fitBounds(view.bounds, { padding: 60, maxZoom: 13, duration: 0 });
+			// The cap keeps a single pin, or photos close together, showing the
+			// surrounding area (about 20 km across) rather than a few streets.
+			map.fitBounds(view.bounds, { padding: 60, maxZoom: 11, duration: 0 });
 		}
 
 		map.on('load', () => {
