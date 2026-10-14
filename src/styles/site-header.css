@@ -1,0 +1,49 @@
+/* The site-wide header (src/lib/site-header.ts). The wedding page inlines this
+   file without the journal's element styles, so every color and font the header
+   relies on is set here rather than inherited. */
+.site-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	max-width: 72rem;
+	margin: 0 auto;
+	padding: 1.25rem 16px;
+	font-family: var(--sans);
+	font-weight: 300;
+	line-height: 1.7;
+}
+
+.site-header .site-title {
+	font-family: var(--serif);
+	font-size: 1.35rem;
+	color: var(--text);
+	text-decoration: none;
+}
+
+.site-header nav {
+	display: flex;
+	align-items: center;
+	gap: 1.25rem;
+	font-size: 0.9rem;
+}
+
+.site-header nav a {
+	color: var(--muted);
+	text-decoration: none;
+}
+
+.site-header nav a:hover {
+	color: var(--text);
+}
+
+.site-header .admin-link {
+	padding: 0.3rem 0.9rem;
+	border: 1px solid var(--rule);
+	border-radius: 999px;
+}
+
+.site-header .admin-link:hover {
+	border-color: var(--accent);
+	color: var(--accent);
+}

@@ -4,7 +4,9 @@ interface Props {
 	description?: string;
 }
 
+import { siteHeaderHtml } from '../lib/site-header';
 import '../styles/global.css';
+import '../styles/site-header.css';
 
 const { title, description = 'Our journal' } = Astro.props;
 ---
@@ -25,13 +27,7 @@ const { title, description = 'Our journal' } = Astro.props;
 		<title>{title}</title>
 	</head>
 	<body>
-		<header class="site-header">
-			<a class="site-title" href="/">Jackie &amp; Ryan</a>
-			<nav>
-				<a href="/">Journal</a>
-				{Astro.locals.isAdmin && <a class="admin-link" href="/admin">Admin</a>}
-			</nav>
-		</header>
+		<Fragment set:html={siteHeaderHtml(Astro.locals.isAdmin)} />
 		<slot />
 		<footer class="site-footer">
 			<a href="/">Jackie &amp; Ryan</a>
@@ -40,49 +36,6 @@ const { title, description = 'Our journal' } = Astro.props;
 </html>
 
 <style>
-	.site-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		max-width: 72rem;
-		margin: 0 auto;
-		padding: 1.25rem 16px;
-	}
-
-	.site-title {
-		font-family: var(--serif);
-		font-size: 1.35rem;
-		text-decoration: none;
-	}
-
-	nav {
-		display: flex;
-		align-items: center;
-		gap: 1.25rem;
-		font-size: 0.9rem;
-	}
-
-	nav a {
-		color: var(--muted);
-		text-decoration: none;
-	}
-
-	nav a:hover {
-		color: var(--text);
-	}
-
-	nav .admin-link {
-		padding: 0.3rem 0.9rem;
-		border: 1px solid var(--rule);
-		border-radius: 999px;
-	}
-
-	nav .admin-link:hover {
-		border-color: var(--accent);
-		color: var(--accent);
-	}
-
 	.site-footer {
 		margin-top: 5rem;
 		padding: 2rem 16px 3rem;

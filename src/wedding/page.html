@@ -10,15 +10,50 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* Stack the site header above the section tabs in one fixed bar. The
+           page was laid out for the tabs alone being fixed (styles.css), so the
+           body is pushed down by the header's height to keep every offset the same. */
+        :root { --site-header-h: 56px; }
+        body { padding-top: var(--site-header-h); }
+        .wedding-top {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(250, 250, 250, 0.95);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+        }
+        body .wedding-top .site-header {
+            height: var(--site-header-h);
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .wedding-top .scroll-nav {
+            position: static;
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            box-shadow: none;
+            border-top: 1px solid #eee;
+        }
+        .section { scroll-margin-top: calc(90px + var(--site-header-h)); }
+    </style>
 </head>
 <body>
-    <!-- Scroll Navigation -->
+    <!-- Site header and section tabs share one fixed bar at the top -->
+    <div class="wedding-top">
+        <!-- site-header -->
     <nav class="scroll-nav">
             <a href="#home" class="nav-link active">&nbsp;Home&nbsp;</a>
             <a href="#details" class="nav-link">The Day&nbsp;</a>
             <a href="#story" class="nav-link">Our Story&nbsp;</a>
             <a href="#media" class="nav-link">Photos&nbsp;</a>
         </nav>
+    </div>
 
     <!-- Main Container -->
     <div class="main-container">
@@ -242,6 +277,6 @@
         <div class="lightbox-counter" id="lightbox-counter"></div>
     </div>
 
-    <script src="script.js?v=59"></script>
+    <script src="script.js?v=60"></script>
 </body>
-</html><!-- Updated: Sun Nov  2 14:34:52 PST 2025 -->
+</html>

@@ -25,7 +25,7 @@ function initializeWebsite() {
             const targetSection = document.getElementById(targetId);
 
             if (targetSection) {
-                const navHeight = document.querySelector('.scroll-nav')?.offsetHeight || 0;
+                const navHeight = document.querySelector('.wedding-top, .scroll-nav')?.offsetHeight || 0;
                 const targetPosition = targetSection.offsetTop - navHeight + 1;
 
                 window.scrollTo({
@@ -42,7 +42,8 @@ function initializeWebsite() {
     // Scroll spy for active navigation highlighting
     function updateActiveNav() {
         const sections = document.querySelectorAll('.section');
-        const scrollPosition = window.scrollY + 100;
+        // Count a section as current once it reaches the bottom of the fixed top bar.
+        const scrollPosition = window.scrollY + (document.querySelector('.wedding-top, .scroll-nav')?.offsetHeight || 90) + 10;
 
         sections.forEach((section) => {
             const sectionTop = section.offsetTop;

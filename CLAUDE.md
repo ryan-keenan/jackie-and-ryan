@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Jackie & Ryan's site, being turned from a single static wedding page into an AI-assisted life journal. Admins upload photos and notes, an AI model drafts a blog post, and they review and publish it. The full plan, including architecture and phases, is in `docs/journal-plan.md`.
 
 - **Journal:** an Astro app deployed to Cloudflare Workers using the `@astrojs/cloudflare` adapter (`astro.config.mjs`, `wrangler.jsonc`).
-- **Wedding page (December 21st, 2025):** the original static site, kept in `public/wedding/` and served at `/wedding/`. It is now an archive entry: the countdown and RSVP were removed and the event text is in past tense, but its design, story and photos are unchanged. It appears as a card on the journal homepage.
+- **Wedding page (December 21st, 2025):** the original hand-written page, served at `/wedding/` with the journal's site header on top. It is now an archive entry: the countdown and RSVP were removed and the event text is in past tense, but its design, story and photos are unchanged. It appears as a card on the journal homepage.
 
 ## Development Commands
 
@@ -39,6 +39,7 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 - `src/lib/db.ts`: all D1 queries.
 - `src/lib/markdown.ts`: Markdown rendering with raw HTML disabled.
 - `src/pages/index.astro`: the homepage cards, newest first. `src/lib/journal.ts` merges published public posts with `STATIC_ENTRIES`, entries that live outside the database. The wedding page is one of those, dated 2025-12-21 and using `public/journal/wedding-card.jpg`. Posts sort by trip start date, or by publish date if they have none.
+- **Site header:** `src/lib/site-header.ts` returns the header as an HTML string, and its styles are in `src/styles/site-header.css`. The journal layout and the wedding page both use these, so the header is defined once.
 - **Admin links on public pages:** the middleware sets `locals.isAdmin` on every page. When the visitor is a signed-in admin, the header shows an "Admin" button and post pages show "Edit post", and the page is sent `private, no-cache` so those links are never cached for anyone else.
 - `src/pages/posts/[slug].astro`: a published public post. Drafts and private posts return 404.
 - `src/pages/media/[...key].ts`: serves display and thumbnail images from R2, only for published public posts. Originals are never served.
@@ -96,8 +97,9 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 ### Dev server note
 After adding a dependency, or when the dev server re-optimizes dependencies, it can fail with "file does not exist ... deps_ssr/handler". Fix it by running `npx astro dev stop`, then `rm -rf node_modules/.vite`, then restarting. Production builds are unaffected.
 
-### Wedding page (`public/wedding/`)
-- **index.html:** a single-page layout with a hero section, event details, the story, a photo gallery, a video embed and a link back to the journal.
+### Wedding page (`src/wedding/page.html`, `public/wedding/`)
+- **How it is served:** Astro's template parser rejects the page's hand-written HTML, so `src/pages/wedding/index.ts` serves `src/wedding/page.html` as a string. It replaces the `<!-- site-header -->` marker with the site header and inlines the header's CSS. The header and the section tabs share one fixed bar.
+- **page.html:** a single-page layout with a hero section, event details, the story, a photo gallery, a video embed and a link back to the journal.
 - **script.js:**
   - Lightbox gallery: click any photo to open it; ESC or a click outside closes it.
   - Fade-in-on-scroll animations, using an Intersection Observer.
@@ -106,7 +108,7 @@ After adding a dependency, or when the dev server re-optimizes dependencies, it 
 - **styles.css:** a mobile-first responsive layout, with a CSS Grid photo gallery.
 - **images/:** wedding photos and the favicon.
 
-All asset paths in the wedding page are relative, so it works from the `/wedding/` subdirectory. The `/wedding` URL redirects to `/wedding/`.
+The page's `script.js`, `styles.css` and `images/` stay in `public/wedding/`. Its asset paths are relative, so it only works at `/wedding/`; the route redirects `/wedding` there.
 
 ### External Integrations (wedding page)
 - **Google Fonts:** Fraunces (headings) and Poppins (body text).
