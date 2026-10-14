@@ -324,16 +324,6 @@ export async function updateJob(
 		.run();
 }
 
-/** Bodies of the most recent published posts, other than this one, as examples of the journal's voice. */
-export async function recentPublishedBodies(excludePostId: string, limit: number): Promise<{ title: string; body: string }[]> {
-	const { results } = await env.DB.prepare(
-		`SELECT title, body FROM posts WHERE status = 'published' AND id != ? ORDER BY published_at DESC LIMIT ?`,
-	)
-		.bind(excludePostId, limit)
-		.all<{ title: string; body: string }>();
-	return results;
-}
-
 /** Replaces a post's title, summary, cover and body with a generated draft, and sets photo and video captions. */
 export async function saveDraft(
 	postId: string,

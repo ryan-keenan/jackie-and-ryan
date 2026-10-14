@@ -77,6 +77,8 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
   - `ANTHROPIC_API_KEY` is a Worker secret. Locally it lives in `.dev.vars`.
 - **Failures:** rate limits and API errors retry up to 3 attempts. Refusals, cut-off replies and unusable output fail the job, with the reason shown on the page. Token usage is recorded on the job.
 - **The prompt** is in `src/lib/ai/prompt.ts`. Do not change its wording without the owners' approval.
+  - **Voice:** it quotes captions and story lines from the wedding page as a voice reference: playful, wry and specific. Captions and text retell the per-photo notes in that voice instead of quoting them, and the text adds what the photos can't show instead of describing them.
+  - **No example posts:** earlier published posts are not sent as style examples, because the first drafts were written in the flat, descriptive style being replaced. Revisit this once there are posts in the voice they want.
 - **Editing:** the editor (`src/scripts/block-editor.ts`) saves through `PUT /api/admin/posts/:id/content`. Publishing goes through `POST /api/admin/posts/:id/publish`, which refuses an empty or invalid body. `/admin/posts/:id/preview` shows the last saved version, drafts included.
 - **Caching:** public pages send `cache-control: no-cache`, so edits and unpublishing show up on the next visit.
 

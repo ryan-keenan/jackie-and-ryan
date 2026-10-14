@@ -5,7 +5,6 @@ import {
 	getPhotosForAdmin,
 	getPostForAdmin,
 	getVideosForPost,
-	recentPublishedBodies,
 	saveDraft,
 	updateJob,
 } from '../db';
@@ -22,8 +21,6 @@ export interface DraftJobMessage {
 
 /** Attempts per job, counting the first; matches max_retries + 1 in wrangler.jsonc. */
 export const MAX_ATTEMPTS = 3;
-
-const EXAMPLE_POSTS = 2;
 
 export async function runDraftJob(jobId: string, attempt: number): Promise<'done' | 'retry'> {
 	const job = await getJob(jobId);
@@ -71,10 +68,8 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 			}),
 		);
 
-		const examples = await recentPublishedBodies(post.id, EXAMPLE_POSTS);
-
 		const client = new Anthropic({ apiKey: config.apiKey });
-		const result = await generateDraft(client, config, { post, photos, images, examples, videos });
+		const result = await generateDraft(client, config, { post, photos, images, videos });
 
 		await saveDraft(post.id, {
 			title: result.draft.title,

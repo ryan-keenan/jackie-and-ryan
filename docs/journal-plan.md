@@ -54,7 +54,7 @@ The post body is stored as blocks rather than free-form HTML so the AI's output 
 - **Input:** the trip notes, the per-photo notes, photos sorted by EXIF time with their timestamps and place names, and the images themselves. GPS coordinates are converted to place names with a free geocoder, or the raw coordinates are sent if geocoding fails.
 - **Large batches:** if there are more than about 40 photos, a first pass on the thumbnails picks the highlights. The rest go into an "all photos" gallery at the end of the post.
 - **Output:** Claude's structured output or tool use returns JSON that matches the block schema: title, summary, sections, photo placement, captions and alt text. The JSON is validated before it's saved, and invalid output fails the job with a visible error.
-- **Voice:** a short "how we write" style guide, plus the last 2–3 published posts as examples, so drafts start to sound like Jackie and Ryan over time.
+- **Voice:** the prompt quotes captions and story lines from the wedding page as its voice reference. Earlier posts were sent as examples at first, but that was stopped in October 2026 because those first drafts were flat and descriptive; it can return once posts are in the voice they want.
 - **The prompt is yours.** I'll draft it as a separate file (`src/lib/ai/prompt.ts`) and show you the full text for approval before it's used. After that I won't change it without asking.
 
 ## Admin experience

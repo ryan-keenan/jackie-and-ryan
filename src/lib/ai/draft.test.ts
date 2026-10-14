@@ -24,7 +24,6 @@ function input(count = 3): DraftInput {
 		post,
 		photos,
 		images: new Map(photos.map((p) => [p.id, new Uint8Array([0xff, 0xd8, 0xff])])),
-		examples: [],
 	};
 }
 
@@ -126,7 +125,6 @@ describe('buildDraftContent', () => {
 		const last = content[4] as { text: string };
 		expect(last.text).toContain('Night market on day one.');
 		expect(last.text).toContain('Dates: 2026-01-10 to 2026-01-12');
-		expect(last.text).not.toContain('<example_posts>');
 	});
 
 	it('adds each video as an introduction and a still frame after the photos', () => {

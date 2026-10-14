@@ -1,10 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { BetaContentBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { blockText } from '../blocks';
 import type { AdminPhoto, AdminPost, VideoRow } from '../db';
 import { formatDuration } from '../format';
-import { DRAFT_SYSTEM_PROMPT, draftRequestText, photoIntro, videoIntro, type ExamplePost } from './prompt';
+import { DRAFT_SYSTEM_PROMPT, draftRequestText, photoIntro, videoIntro } from './prompt';
 import { convertDraft, draftOutputSchema, type ConvertedDraft } from './schema';
 
 // Turns a post's photos, videos and notes into a draft with Claude. One request
@@ -46,7 +45,6 @@ export interface DraftInput {
 	photos: AdminPhoto[];
 	/** JPEG bytes of each photo's AI copy, keyed by photo id. */
 	images: Map<string, Uint8Array>;
-	examples: { title: string; body: string }[];
 	/** Ready videos, labeled V1, V2, ... in this order, each with a JPEG still frame. */
 	videos?: { video: VideoRow; still: Uint8Array }[];
 }
@@ -100,19 +98,15 @@ export function buildDraftContent(input: DraftInput): BetaContentBlockParam[] {
 		});
 		content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: toBase64(still) } });
 	});
-	const examples: ExamplePost[] = input.examples.map((e) => ({ title: e.title, text: blockText(e.body) }));
 	content.push({
 		type: 'text',
-		text: draftRequestText(
-			{
-				workingTitle: input.post.title,
-				location: input.post.location,
-				tripStart: input.post.trip_start,
-				tripEnd: input.post.trip_end,
-				notes: input.post.author_notes,
-			},
-			examples.filter((e) => e.text.trim()),
-		),
+		text: draftRequestText({
+			workingTitle: input.post.title,
+			location: input.post.location,
+			tripStart: input.post.trip_start,
+			tripEnd: input.post.trip_end,
+			notes: input.post.author_notes,
+		}),
 	});
 	return content;
 }

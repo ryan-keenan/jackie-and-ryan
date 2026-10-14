@@ -25,14 +25,14 @@ export const draftOutputSchema = z.object({
 	photo_captions: z.array(
 		z.object({
 			photo: label,
-			caption: z.string().describe('Short caption shown under the photo; may be empty'),
+			caption: z.string().describe("Short caption in the journal's voice, shown under the photo"),
 			alt: z.string().describe('Alt text describing the photo for screen readers'),
 		}),
 	),
 	video_captions: z.array(
 		z.object({
 			video: videoLabel,
-			caption: z.string().describe('Short caption shown under the video; may be empty'),
+			caption: z.string().describe("Short caption in the journal's voice, shown under the video"),
 		}),
 	),
 });
