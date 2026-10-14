@@ -1,6 +1,6 @@
 /* Palette and fonts, shared by the journal and the wedding page. Variables only, no element styles. */
 :root {
-	--bg: #fafafa;
+	--bg: #ffffff;
 	--surface: #ffffff;
 	--text: #2c2c2c;
 	--muted: #666666;
