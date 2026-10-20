@@ -193,6 +193,43 @@ async function geminiAccountErrors<T>(call: Promise<T>): Promise<T> {
 	}
 }
 
+const GROUNDING_REDIRECT_HOST = 'vertexaisearch.cloud.google.com';
+
+/**
+ * Gemini cites pages through temporary Google redirect links, which would
+ * break in a published post's source list. Each is replaced by the page it
+ * redirects to. A link that can't be resolved is kept but marked unverified, so
+ * the admins see it and can check or remove it.
+ */
+export async function resolveGroundingRedirects(items: ResearchItem[], fetchFn: typeof fetch = fetch): Promise<ResearchItem[]> {
+	const redirects = new Set(items.flatMap((item) => item.sources.map((s) => s.url)).filter((url) => new URL(url).hostname === GROUNDING_REDIRECT_HOST));
+	const resolved = new Map<string, string | null>();
+	await Promise.all(
+		[...redirects].map(async (url) => {
+			try {
+				const response = await fetchFn(url, { method: 'GET', redirect: 'manual' });
+				const location = response.headers.get('location');
+				resolved.set(url, location && /^https?:\/\//.test(location) ? location : null);
+			} catch {
+				resolved.set(url, null);
+			}
+		}),
+	);
+	return items.map((item) => {
+		const sources = new Map<string, ResearchSource>();
+		for (const source of item.sources) {
+			if (!redirects.has(source.url)) {
+				sources.set(source.url, source);
+				continue;
+			}
+			const target = resolved.get(source.url);
+			if (target) sources.set(target, { ...source, url: target });
+			else sources.set(source.url, { ...source, verified: false });
+		}
+		return { ...item, sources: [...sources.values()] };
+	});
+}
+
 async function researchWithGemini(config: ResearchConfig, request: string): Promise<ResearchResult> {
 	const client = new GoogleGenAI({ apiKey: config.apiKey });
 	const interaction = (await geminiAccountErrors(client.interactions.create({
@@ -240,7 +277,7 @@ async function researchWithGemini(config: ResearchConfig, request: string): Prom
 
 	return {
 		placeResearched: output.place_researched,
-		items: toResearchItems(output, seen),
+		items: await resolveGroundingRedirects(toResearchItems(output, seen)),
 		searchSuggestions,
 		model: config.model,
 		inputTokens: interaction.usage?.total_input_tokens ?? 0,

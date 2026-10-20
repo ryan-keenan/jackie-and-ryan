@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRetryableResearchError, readResearchConfig, toResearchItems } from './research';
+import { isRetryableResearchError, readResearchConfig, resolveGroundingRedirects, toResearchItems } from './research';
 import { researchRequestText } from './research-prompt';
 
 describe('readResearchConfig', () => {
@@ -61,5 +61,37 @@ describe('isRetryableResearchError', () => {
 		expect(isRetryableResearchError(Object.assign(new Error('bad'), { status: 400 }))).toBe(false);
 		expect(isRetryableResearchError(Object.assign(new Error('net'), { name: 'ConnectionError' }))).toBe(true);
 		expect(isRetryableResearchError(new Error('other'))).toBe(false);
+	});
+});
+
+describe('resolveGroundingRedirects', () => {
+	const redirect = (id: string) => `https://vertexaisearch.cloud.google.com/grounding-api-redirect/${id}`;
+
+	it('replaces Google redirect links with their targets, merges duplicates, and flags failures', async () => {
+		const fetchFn = async (url: string | URL | Request) => {
+			const id = String(url).split('/').pop();
+			if (id === 'bad') throw new Error('network');
+			return new Response(null, { status: 302, headers: { location: 'https://www.mountainproject.com/area/1' } });
+		};
+		const [item] = await resolveGroundingRedirects(
+			[
+				{
+					id: 'x',
+					text: 'A crag.',
+					sources: [
+						{ url: redirect('a'), title: 'mountainproject.com', verified: true },
+						{ url: redirect('b'), title: 'mountainproject.com', verified: true },
+						{ url: redirect('bad'), title: 'example.com', verified: true },
+						{ url: 'https://en.wikipedia.org/wiki/X', title: 'X', verified: true },
+					],
+				},
+			],
+			fetchFn as typeof fetch,
+		);
+		expect(item.sources).toEqual([
+			{ url: 'https://www.mountainproject.com/area/1', title: 'mountainproject.com', verified: true },
+			{ url: redirect('bad'), title: 'example.com', verified: false },
+			{ url: 'https://en.wikipedia.org/wiki/X', title: 'X', verified: true },
+		]);
 	});
 });
