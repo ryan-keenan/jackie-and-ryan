@@ -2,13 +2,16 @@ import type { Block } from '../lib/blocks';
 
 // Editor for a post body: a list of blocks that can be edited, reordered,
 // removed and added. It renders into `root` and reports every change through
-// onChange; saving is up to the page.
+// onChange; saving is up to the page. Photo and video captions are edited under
+// each photo or video too, but they belong to the photo or video rather than
+// the body, so they are saved on their own through onCaption.
 
 export interface EditorPhoto {
 	id: string;
 	/** "Photo 3 · Jan 10, 7:32 PM" */
 	label: string;
 	thumbUrl: string;
+	caption: string;
 }
 
 export interface EditorVideo {
@@ -17,7 +20,10 @@ export interface EditorVideo {
 	label: string;
 	/** A still frame, once Stream has processed the video. */
 	thumbUrl: string | null;
+	caption: string;
 }
+
+export type CaptionTarget = { kind: 'photo' | 'video'; id: string };
 
 type BlockType = Block['type'];
 
@@ -52,6 +58,8 @@ export class BlockEditor {
 		private readonly photos: EditorPhoto[],
 		private readonly videos: EditorVideo[],
 		private readonly onChange: () => void,
+		/** Saves one caption; rejects with a message to show if saving fails. */
+		private readonly onCaption: (target: CaptionTarget, caption: string) => Promise<void>,
 	) {
 		this.blocks = structuredClone(initial);
 		this.photosById = new Map(photos.map((photo) => [photo.id, photo]));
@@ -73,6 +81,16 @@ export class BlockEditor {
 		else this.videos.push(video);
 		this.videosById.set(video.id, video);
 		this.render();
+	}
+
+	/** Updates a caption edited elsewhere on the page (the photo and video cards). */
+	setCaption(target: CaptionTarget, caption: string) {
+		const item = target.kind === 'photo' ? this.photosById.get(target.id) : this.videosById.get(target.id);
+		if (!item) return;
+		item.caption = caption;
+		for (const input of this.root.querySelectorAll<HTMLTextAreaElement>(`textarea.caption-input[data-${target.kind}-id="${target.id}"]`)) {
+			input.value = caption;
+		}
 	}
 
 	getBlocks(): Block[] {
@@ -110,6 +128,36 @@ export class BlockEditor {
 			: el('div', { className: 'block-thumb video-processing', textContent: 'Processing…' });
 	}
 
+	/** A caption box that saves when it loses focus, with a status line under it. */
+	private captionField(target: CaptionTarget): HTMLElement {
+		const item = target.kind === 'photo' ? this.photosById.get(target.id) : this.videosById.get(target.id);
+		const input = el('textarea', {
+			className: 'caption-input',
+			rows: 1,
+			maxLength: 500,
+			value: item?.caption ?? '',
+			placeholder: target.kind === 'photo' ? 'Caption shown under the photo' : 'Caption shown under the video',
+		});
+		input.setAttribute('aria-label', 'Caption');
+		input.dataset[`${target.kind}Id`] = target.id;
+		const status = el('span', { className: 'caption-status' });
+		status.setAttribute('role', 'status');
+		input.addEventListener('change', async () => {
+			const caption = input.value.trim();
+			status.textContent = 'Saving…';
+			status.classList.remove('status-error');
+			try {
+				await this.onCaption(target, caption);
+				if (item) item.caption = caption;
+				status.textContent = 'Caption saved';
+			} catch (error) {
+				status.textContent = (error as Error).message;
+				status.classList.add('status-error');
+			}
+		});
+		return el('div', { className: 'caption-field' }, input, status);
+	}
+
 	private thumb(photoId: string): HTMLImageElement {
 		const photo = this.photosById.get(photoId);
 		return el('img', { className: 'block-thumb', src: photo?.thumbUrl ?? '', alt: photo?.label ?? 'Missing photo' });
@@ -145,20 +193,30 @@ export class BlockEditor {
 					'div',
 					{ className: 'photo-row' },
 					this.thumb(block.photoId),
-					this.photoSelect(block.photoId, (id) => {
-						this.blocks[index] = { type: 'photo', photoId: id };
-						this.changed();
-					}),
+					el(
+						'div',
+						{ className: 'stack' },
+						this.photoSelect(block.photoId, (id) => {
+							this.blocks[index] = { type: 'photo', photoId: id };
+							this.changed();
+						}),
+						this.captionField({ kind: 'photo', id: block.photoId }),
+					),
 				);
 			case 'video':
 				return el(
 					'div',
 					{ className: 'photo-row' },
 					this.videoThumb(block.videoId),
-					this.videoSelect(block.videoId, (id) => {
-						this.blocks[index] = { type: 'video', videoId: id };
-						this.changed();
-					}),
+					el(
+						'div',
+						{ className: 'stack' },
+						this.videoSelect(block.videoId, (id) => {
+							this.blocks[index] = { type: 'video', videoId: id };
+							this.changed();
+						}),
+						this.captionField({ kind: 'video', id: block.videoId }),
+					),
 				);
 			case 'gallery': {
 				const items = block.photoIds.map((id, position) => {
@@ -168,7 +226,7 @@ export class BlockEditor {
 						this.blocks[index] = { type: 'gallery', photoIds };
 						this.changed();
 					});
-					return el('div', { className: 'gallery-item' }, this.thumb(id), remove);
+					return el('div', { className: 'gallery-item' }, this.thumb(id), this.captionField({ kind: 'photo', id }), remove);
 				});
 				const add = this.photoSelect(null, (id) => {
 					this.blocks[index] = { type: 'gallery', photoIds: [...block.photoIds, id] };

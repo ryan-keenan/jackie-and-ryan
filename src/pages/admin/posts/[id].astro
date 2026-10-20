@@ -57,12 +57,14 @@ const editorData = {
 		id: video.id,
 		label: `Video ${index + 1} · ${video.file_name || 'untitled'}`,
 		thumbUrl: videoThumb(video),
+		caption: video.caption,
 	})),
 	processingVideoIds: videos.filter((video) => video.status === 'processing').map((video) => video.id),
 	photos: photos.map((photo, index) => ({
 		id: photo.id,
 		label: `Photo ${index + 1} · ${formatTakenAt(photo.taken_at)}`,
 		thumbUrl: `/api/admin/media/${photo.r2_key_thumb}`,
+		caption: photo.caption,
 	})),
 };
 // Embedded as JSON in a <script> tag; escaping "<" keeps text in a post from closing the script tag early.
@@ -275,7 +277,7 @@ function jobText(): string {
 	import { tripDateRange } from '../../../lib/photo-meta';
 	import type { Block } from '../../../lib/blocks';
 	import { preparePhoto, runWithLimit, uploadPhoto, type UploadedPhoto } from '../../../scripts/admin-upload';
-	import { BlockEditor, type EditorPhoto, type EditorVideo } from '../../../scripts/block-editor';
+	import { BlockEditor, type CaptionTarget, type EditorPhoto, type EditorVideo } from '../../../scripts/block-editor';
 	import { uploadVideo, type VideoState } from '../../../scripts/video-upload';
 	import { formatDuration } from '../../../lib/format';
 	import { mapSourceHint } from '../../../lib/map';
@@ -381,6 +383,7 @@ function jobText(): string {
 			id: photo.id,
 			label: `Photo ${grid.children.length} · ${formatTakenAt(photo.taken_at)}`,
 			thumbUrl: `/api/admin/media/${photo.r2_key_thumb}`,
+			caption: '',
 		});
 	}
 
@@ -392,6 +395,7 @@ function jobText(): string {
 		const field = input.dataset.field!;
 		try {
 			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'PATCH', { [field]: input.value });
+			if (field === 'caption') editor?.setCaption({ kind: 'photo', id: card.dataset.photoId! }, input.value.trim());
 			setStatus(status, `${field === 'alt' ? 'Alt text' : field[0].toUpperCase() + field.slice(1)} saved`, true);
 		} catch (error) {
 			setStatus(status, (error as Error).message, false);
@@ -520,8 +524,15 @@ function jobText(): string {
 		postStatus.className = 'post-status';
 	}
 
+	// A caption edited in the post editor saves right away and updates the matching photo or video card.
+	async function saveCaption(target: CaptionTarget, caption: string) {
+		await sendJson(`/api/admin/${target.kind}s/${target.id}`, 'PATCH', { caption });
+		const input = document.querySelector<HTMLInputElement>(`[data-${target.kind}-id="${target.id}"] [data-field="caption"]`);
+		if (input) input.value = caption;
+	}
+
 	const editor: BlockEditor | null = data.editable
-		? new BlockEditor(document.querySelector<HTMLElement>('#block-editor')!, data.blocks, data.photos, data.videos, markDirty)
+		? new BlockEditor(document.querySelector<HTMLElement>('#block-editor')!, data.blocks, data.photos, data.videos, markDirty, saveCaption)
 		: null;
 	summaryInput.addEventListener('input', markDirty);
 	window.addEventListener('beforeunload', (event) => {
@@ -672,7 +683,8 @@ function jobText(): string {
 			img.alt = '';
 			card.querySelector('.video-thumb')!.replaceWith(img);
 			const index = [...videoList.children].indexOf(card);
-			editor?.setVideo({ id: video.id, label: `Video ${index + 1} · ${video.file_name || 'untitled'}`, thumbUrl: thumb });
+			const caption = card.querySelector<HTMLInputElement>('[data-field="caption"]')!.value;
+			editor?.setVideo({ id: video.id, label: `Video ${index + 1} · ${video.file_name || 'untitled'}`, thumbUrl: thumb, caption });
 		}
 	}
 
@@ -702,7 +714,7 @@ function jobText(): string {
 			onCreated: (videoId) => {
 				card.dataset.videoId = videoId;
 				const index = [...videoList.children].indexOf(card);
-				editor?.setVideo({ id: videoId, label: `Video ${index + 1} · ${file.name}`, thumbUrl: null });
+				editor?.setVideo({ id: videoId, label: `Video ${index + 1} · ${file.name}`, thumbUrl: null, caption: '' });
 			},
 			onProgress: (fraction) => setStatus(state, `Uploading ${Math.round(fraction * 100)}%`, true),
 		})
@@ -721,6 +733,7 @@ function jobText(): string {
 		if (!card.dataset.videoId) return setStatus(status, 'Wait for the upload to start', false);
 		try {
 			await sendJson(`/api/admin/videos/${card.dataset.videoId}`, 'PATCH', { [input.dataset.field!]: input.value });
+			if (input.dataset.field === 'caption') editor?.setCaption({ kind: 'video', id: card.dataset.videoId }, input.value.trim());
 			setStatus(status, input.dataset.field === 'note' ? 'Note saved' : 'Caption saved', true);
 		} catch (error) {
 			setStatus(status, (error as Error).message, false);
@@ -1127,6 +1140,43 @@ function jobText(): string {
 	#block-editor :global(.photo-picker) {
 		width: auto !important;
 		max-width: 100%;
+	}
+
+	#block-editor :global(.photo-row),
+	#block-editor :global(.gallery-row) {
+		align-items: flex-start;
+	}
+
+	#block-editor :global(.photo-row > .stack) {
+		flex: 1;
+		min-width: 14rem;
+	}
+
+	#block-editor :global(.gallery-item) {
+		width: 12rem;
+		align-content: start;
+	}
+
+	#block-editor :global(.caption-field) {
+		display: grid;
+		gap: 0.15rem;
+		width: 100%;
+	}
+
+	#block-editor :global(.caption-input) {
+		width: 100%;
+		/* Grows with the caption; the layout's default textarea height is for long text. */
+		field-sizing: content;
+		min-height: 0;
+		height: auto;
+		font-size: 0.9rem;
+		resize: vertical;
+	}
+
+	#block-editor :global(.caption-status) {
+		min-height: 1em;
+		font-size: 0.75rem;
+		color: var(--muted);
 	}
 
 	#block-editor :global(.link) {
