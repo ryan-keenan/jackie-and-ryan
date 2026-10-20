@@ -47,10 +47,3 @@ export type Research = z.infer<typeof researchSchema>;
 export function parseResearch(json: string | null): Research | null {
 	return json === null ? null : researchSchema.parse(JSON.parse(json));
 }
-
-export const postSourceSchema = z.object({ url: z.url(), title: z.string() });
-export type PostSource = z.infer<typeof postSourceSchema>;
-
-export function parseSources(json: string): PostSource[] {
-	return z.array(postSourceSchema).parse(JSON.parse(json));
-}

@@ -146,7 +146,7 @@ export async function generateDraft(client: Anthropic, config: DraftConfig, inpu
 	const videoLabels = new Map((input.videos ?? []).map(({ video }, index) => [videoLabel(index), video.id]));
 	let draft: ConvertedDraft;
 	try {
-		draft = convertDraft(response.parsed_output, labels, videoLabels, input.research ?? []);
+		draft = convertDraft(response.parsed_output, labels, videoLabels);
 	} catch (error) {
 		throw new DraftFailed((error as Error).message);
 	}

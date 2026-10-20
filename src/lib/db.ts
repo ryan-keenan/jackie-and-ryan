@@ -21,8 +21,6 @@ export interface PostRow {
 	place_name: string;
 	/** JSON research notes (src/lib/research.ts), or null if never researched. */
 	research: string | null;
-	/** JSON array of the sources the post's text uses. */
-	sources: string;
 	published_at: string | null;
 }
 
@@ -48,7 +46,7 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, place_lat, place_lon, place_name, research, sources, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, place_lat, place_lon, place_name, research, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
 	const { results } = await env.DB.prepare(
@@ -371,15 +369,13 @@ export async function saveDraft(
 		body: string;
 		captions: { photoId: string; caption: string; alt: string }[];
 		videoCaptions: { videoId: string; caption: string }[];
-		/** JSON array of the research sources the draft uses. */
-		sources: string;
 	},
 ): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DB.batch([
 		env.DB.prepare(
-			'UPDATE posts SET title = ?, summary = ?, cover_photo_id = ?, body = ?, sources = ?, updated_at = ? WHERE id = ?',
-		).bind(draft.title, draft.summary, draft.coverPhotoId, draft.body, draft.sources, now, postId),
+			'UPDATE posts SET title = ?, summary = ?, cover_photo_id = ?, body = ?, updated_at = ? WHERE id = ?',
+		).bind(draft.title, draft.summary, draft.coverPhotoId, draft.body, now, postId),
 		...draft.captions.map((c) =>
 			env.DB.prepare('UPDATE photos SET caption = ?, alt = ? WHERE id = ? AND post_id = ?').bind(
 				c.caption,

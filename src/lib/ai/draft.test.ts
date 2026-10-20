@@ -39,7 +39,6 @@ const goodOutput: DraftOutput = {
 	],
 	photo_captions: [{ photo: 'P1', caption: 'Arrival', alt: 'A rainy street at night' }],
 	video_captions: [],
-	research_used: [],
 };
 
 function fakeClient(response: Record<string, unknown>) {
@@ -87,27 +86,6 @@ describe('convertDraft', () => {
 			),
 		).toThrow(/more than once/);
 		expect(() => convertDraft({ ...goodOutput, blocks: [] }, labels)).toThrow(/no content/);
-	});
-});
-
-describe('convertDraft with research', () => {
-	const labels = new Map([['P1', 'id-1'], ['P2', 'id-2'], ['P3', 'id-3']]);
-	const research = [
-		{ id: 'r1', text: 'Named for eagles.', sources: [{ url: 'https://a.example/', title: 'A', verified: true }] },
-		{ id: 'r2', text: 'Popular hike.', sources: [{ url: 'https://a.example/', title: 'A', verified: true }, { url: 'https://b.example/', title: 'B', verified: false }] },
-	];
-
-	it('collects the sources of the research used, without duplicates', () => {
-		const draft = convertDraft({ ...goodOutput, research_used: ['r2', 'R1'] }, labels, new Map(), research);
-		expect(draft.sources).toEqual([
-			{ url: 'https://a.example/', title: 'A' },
-			{ url: 'https://b.example/', title: 'B' },
-		]);
-		expect(convertDraft(goodOutput, labels, new Map(), research).sources).toEqual([]);
-	});
-
-	it('rejects unknown research labels', () => {
-		expect(() => convertDraft({ ...goodOutput, research_used: ['R3'] }, labels, new Map(), research)).toThrow(/unknown research "R3"/);
 	});
 });
 

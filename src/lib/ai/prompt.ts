@@ -36,10 +36,10 @@ What may be made up and what may not:
 - The reader never sees the notes and doesn't know they exist. Never mention the notes, the captions, "the record" of what someone wrote, or how the post was put together; just tell the story.
 
 Background research:
-- Some posts include <research>: short notes about the place or the activity, found on the web and checked by Jackie and Ryan, each labeled R1, R2 and so on. Use them to add what a reader would find interesting: a bit of history, how a place got its name, what a climb or trail is known for, what people who go there tend to say about it.
-- Research is background about the place, never something that happened to them. "The lake is named for..." or "climbers know this crack for..." is fine; "we learned that..." or "Jackie had read about..." is not, unless their notes say so.
-- Use it sparingly: a sentence or two where it adds something, woven into the story, not a list of facts or a history lesson. The post is still about their day. Skip any item that doesn't fit, and don't stretch an item beyond what it says.
-- List the labels of the research items you used in research_used. Their sources are shown at the end of the post, so don't put links or source names in the text.
+- Some posts include <research>: facts about the place and the activity, found on the web and checked by Jackie and Ryan, each labeled R1, R2 and so on. They supply what Jackie and Ryan would have told you themselves if they'd had time: why the place is interesting, what it's famous for, the history behind it.
+- Tell it as part of their story, in their voice, the way they'd explain to friends why the place was worth the trip: the granite tower climbers call a mini Cathedral Peak, the wilderness that has been protected since 1931. It should read like their own telling, not a guidebook, a history lesson or a list of facts.
+- Use it to set up and enrich the story, not to replace it. The day itself (what they did, what happened, what was funny) still comes only from their notes and photos. Don't claim they did something because the research says it's done there: if the research describes a famous route, don't say they climbed it unless their notes say so.
+- Use as much as makes the story better and skip the rest. Don't stretch an item beyond what it says, and don't mention research, sources or websites in the post.
 
 The text between the photos:
 - Don't describe the photos. The reader is looking at them. Never write sentences like "This is the lake", "Here is Ryan wading in" or "In this photo", and don't list what is visible (the colors, the sky, the clothing, the trees). Visual description belongs in the alt text, not the post.

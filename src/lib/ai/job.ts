@@ -95,7 +95,6 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 			body: JSON.stringify(result.draft.body),
 			captions: result.draft.captions,
 			videoCaptions: result.draft.videoCaptions,
-			sources: JSON.stringify(result.draft.sources),
 		});
 		await updateJob(jobId, {
 			status: 'succeeded',

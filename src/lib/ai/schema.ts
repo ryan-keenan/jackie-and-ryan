@@ -1,6 +1,5 @@
 import { z } from 'astro/zod';
 import { bodySchema, referencedPhotoIds, type Block } from '../blocks';
-import type { PostSource, ResearchItem } from '../research';
 
 // The shape Claude must return for a draft, enforced by the API's structured
 // outputs. Photos and videos are referred to by short labels ("P1", "V1", ...)
@@ -36,7 +35,6 @@ export const draftOutputSchema = z.object({
 			caption: z.string().describe("Short caption in the journal's voice, shown under the video"),
 		}),
 	),
-	research_used: z.array(z.string()).describe('Labels of the research items the text uses, such as "R2"; empty if none'),
 });
 
 export type DraftOutput = z.infer<typeof draftOutputSchema>;
@@ -48,8 +46,6 @@ export interface ConvertedDraft {
 	body: Block[];
 	captions: { photoId: string; caption: string; alt: string }[];
 	videoCaptions: { videoId: string; caption: string }[];
-	/** Sources of the research the text uses, for the end of the post. */
-	sources: PostSource[];
 }
 
 /**
@@ -61,8 +57,6 @@ export function convertDraft(
 	output: DraftOutput,
 	photoIdsByLabel: Map<string, string>,
 	videoIdsByLabel: Map<string, string> = new Map(),
-	/** The research sent with the request, in label order (R1 first). */
-	research: ResearchItem[] = [],
 ): ConvertedDraft {
 	const problems: string[] = [];
 	const id = (photoLabel: string, where: string): string => {
@@ -108,17 +102,6 @@ export function convertDraft(
 		caption: c.caption.trim(),
 	}));
 
-	const sources = new Map<string, PostSource>();
-	for (const label of output.research_used) {
-		const index = /^R(\d+)$/i.exec(label.trim())?.[1];
-		const item = index === undefined ? undefined : research[Number(index) - 1];
-		if (!item) {
-			problems.push(`research_used refers to unknown research "${label}"`);
-			continue;
-		}
-		for (const source of item.sources) if (!sources.has(source.url)) sources.set(source.url, { url: source.url, title: source.title });
-	}
-
 	if (!output.title.trim()) problems.push('Title is empty');
 	if (body.length === 0) problems.push('The draft has no content');
 	const parsed = bodySchema.safeParse(body);
@@ -140,6 +123,5 @@ export function convertDraft(
 		body,
 		captions,
 		videoCaptions,
-		sources: [...sources.values()],
 	};
 }
