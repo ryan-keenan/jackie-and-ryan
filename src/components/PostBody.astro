@@ -76,9 +76,12 @@ const video = (id: string) => videosById.get(id)!;
 							{block.photoIds.map((id) => {
 								const p = photo(id);
 								return (
-									<a href={mediaUrl(p.r2_key_display)} data-lightbox-src={mediaUrl(p.r2_key_display)} data-lightbox-caption={p.caption}>
-										<img src={mediaUrl(p.r2_key_thumb)} alt={p.alt} loading="lazy" decoding="async" />
-									</a>
+									<figure class="gallery-item">
+										<a href={mediaUrl(p.r2_key_display)} data-lightbox-src={mediaUrl(p.r2_key_display)} data-lightbox-caption={p.caption}>
+											<img src={mediaUrl(p.r2_key_thumb)} alt={p.alt} loading="lazy" decoding="async" />
+										</a>
+										{p.caption && <figcaption>{p.caption}</figcaption>}
+									</figure>
 								);
 							})}
 						</div>
@@ -190,8 +193,20 @@ const video = (id: string) => videosById.get(id)!;
 	.gallery {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 6px;
+		gap: 1.25rem 6px;
+		align-items: start;
 		margin-block: 2.5rem !important;
+	}
+
+	/* Each photo in a gallery is its own figure, so its caption sits under it. */
+	.gallery .gallery-item {
+		margin: 0 !important;
+	}
+
+	.gallery figcaption {
+		margin-top: 0.4rem;
+		padding: 0 4px;
+		font-size: 0.85rem;
 	}
 
 	.gallery.count-2,
@@ -216,13 +231,13 @@ const video = (id: string) => videosById.get(id)!;
 		}
 
 		/* Odd counts in a two-column grid: the first photo spans the full width, so no row has a gap. */
-		.gallery.count-3 a:first-child,
-		.gallery.count-5 a:first-child {
+		.gallery.count-3 .gallery-item:first-child,
+		.gallery.count-5 .gallery-item:first-child {
 			grid-column: span 2;
 		}
 
-		.gallery.count-3 a:first-child img,
-		.gallery.count-5 a:first-child img {
+		.gallery.count-3 .gallery-item:first-child img,
+		.gallery.count-5 .gallery-item:first-child img {
 			aspect-ratio: 2;
 		}
 	}
