@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { BetaContentBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { AdminPhoto, AdminPost, VideoRow } from '../db';
+import type { ResearchItem } from '../research';
 import { formatDuration } from '../format';
 import { DRAFT_SYSTEM_PROMPT, draftRequestText, photoIntro, videoIntro } from './prompt';
 import { convertDraft, draftOutputSchema, type ConvertedDraft } from './schema';
@@ -47,6 +48,8 @@ export interface DraftInput {
 	images: Map<string, Uint8Array>;
 	/** Ready videos, labeled V1, V2, ... in this order, each with a JPEG still frame. */
 	videos?: { video: VideoRow; still: Uint8Array }[];
+	/** Reviewed research notes, labeled R1, R2, ... in this order. */
+	research?: ResearchItem[];
 }
 
 export interface DraftResult {
@@ -106,6 +109,7 @@ export function buildDraftContent(input: DraftInput): BetaContentBlockParam[] {
 			tripStart: input.post.trip_start,
 			tripEnd: input.post.trip_end,
 			notes: input.post.author_notes,
+			research: (input.research ?? []).map((item) => item.text),
 		}),
 	});
 	return content;
@@ -142,7 +146,7 @@ export async function generateDraft(client: Anthropic, config: DraftConfig, inpu
 	const videoLabels = new Map((input.videos ?? []).map(({ video }, index) => [videoLabel(index), video.id]));
 	let draft: ConvertedDraft;
 	try {
-		draft = convertDraft(response.parsed_output, labels, videoLabels);
+		draft = convertDraft(response.parsed_output, labels, videoLabels, input.research ?? []);
 	} catch (error) {
 		throw new DraftFailed((error as Error).message);
 	}

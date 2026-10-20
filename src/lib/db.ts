@@ -19,6 +19,10 @@ export interface PostRow {
 	place_lat: number | null;
 	place_lon: number | null;
 	place_name: string;
+	/** JSON research notes (src/lib/research.ts), or null if never researched. */
+	research: string | null;
+	/** JSON array of the sources the post's text uses. */
+	sources: string;
 	published_at: string | null;
 }
 
@@ -44,7 +48,7 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, place_lat, place_lon, place_name, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, place_lat, place_lon, place_name, research, sources, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
 	const { results } = await env.DB.prepare(
@@ -282,27 +286,30 @@ export async function deletePhotoRow(photo: Pick<AdminPhoto, 'id' | 'post_id'>):
 // AI drafting jobs (see src/lib/ai/draft.ts).
 
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+export type JobKind = 'draft' | 'research';
 
 export interface JobRow {
 	id: string;
 	post_id: string;
+	kind: JobKind;
 	status: JobStatus;
 	error: string | null;
 	model: string;
 	input_tokens: number | null;
 	output_tokens: number | null;
+	web_searches: number | null;
 	created_at: string;
 	updated_at: string;
 }
 
-const JOB_COLUMNS = 'id, post_id, status, error, model, input_tokens, output_tokens, created_at, updated_at';
+const JOB_COLUMNS = 'id, post_id, kind, status, error, model, input_tokens, output_tokens, web_searches, created_at, updated_at';
 
-export async function createJob(job: { id: string; postId: string; model: string }): Promise<void> {
+export async function createJob(job: { id: string; postId: string; kind: JobKind; model: string }): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DB.prepare(
-		`INSERT INTO jobs (id, post_id, status, model, created_at, updated_at) VALUES (?, ?, 'queued', ?, ?, ?)`,
+		`INSERT INTO jobs (id, post_id, kind, status, model, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?, ?)`,
 	)
-		.bind(job.id, job.postId, job.model, now, now)
+		.bind(job.id, job.postId, job.kind, job.model, now, now)
 		.run();
 }
 
@@ -310,19 +317,35 @@ export async function getJob(id: string): Promise<JobRow | null> {
 	return env.DB.prepare(`SELECT ${JOB_COLUMNS} FROM jobs WHERE id = ?`).bind(id).first<JobRow>();
 }
 
-export async function latestJobForPost(postId: string): Promise<JobRow | null> {
-	return env.DB.prepare(`SELECT ${JOB_COLUMNS} FROM jobs WHERE post_id = ? ORDER BY created_at DESC LIMIT 1`)
-		.bind(postId)
+export async function latestJobForPost(postId: string, kind: JobKind): Promise<JobRow | null> {
+	return env.DB.prepare(`SELECT ${JOB_COLUMNS} FROM jobs WHERE post_id = ? AND kind = ? ORDER BY created_at DESC LIMIT 1`)
+		.bind(postId, kind)
 		.first<JobRow>();
+}
+
+/** Replaces a post's research notes (JSON from src/lib/research.ts), or clears them with null. */
+export async function saveResearch(postId: string, research: string | null): Promise<boolean> {
+	const result = await env.DB.prepare('UPDATE posts SET research = ?, updated_at = ? WHERE id = ?')
+		.bind(research, new Date().toISOString(), postId)
+		.run();
+	return result.meta.changes > 0;
 }
 
 export async function updateJob(
 	id: string,
-	update: { status: JobStatus; error?: string | null; model?: string; input_tokens?: number; output_tokens?: number },
+	update: {
+		status: JobStatus;
+		error?: string | null;
+		model?: string;
+		input_tokens?: number;
+		output_tokens?: number;
+		web_searches?: number;
+	},
 ): Promise<void> {
 	await env.DB.prepare(
 		`UPDATE jobs SET status = ?, error = ?, model = COALESCE(?, model),
-		        input_tokens = COALESCE(?, input_tokens), output_tokens = COALESCE(?, output_tokens), updated_at = ?
+		        input_tokens = COALESCE(?, input_tokens), output_tokens = COALESCE(?, output_tokens),
+		        web_searches = COALESCE(?, web_searches), updated_at = ?
 		  WHERE id = ?`,
 	)
 		.bind(
@@ -331,6 +354,7 @@ export async function updateJob(
 			update.model ?? null,
 			update.input_tokens ?? null,
 			update.output_tokens ?? null,
+			update.web_searches ?? null,
 			new Date().toISOString(),
 			id,
 		)
@@ -347,13 +371,15 @@ export async function saveDraft(
 		body: string;
 		captions: { photoId: string; caption: string; alt: string }[];
 		videoCaptions: { videoId: string; caption: string }[];
+		/** JSON array of the research sources the draft uses. */
+		sources: string;
 	},
 ): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DB.batch([
 		env.DB.prepare(
-			'UPDATE posts SET title = ?, summary = ?, cover_photo_id = ?, body = ?, updated_at = ? WHERE id = ?',
-		).bind(draft.title, draft.summary, draft.coverPhotoId, draft.body, now, postId),
+			'UPDATE posts SET title = ?, summary = ?, cover_photo_id = ?, body = ?, sources = ?, updated_at = ? WHERE id = ?',
+		).bind(draft.title, draft.summary, draft.coverPhotoId, draft.body, draft.sources, now, postId),
 		...draft.captions.map((c) =>
 			env.DB.prepare('UPDATE photos SET caption = ?, alt = ? WHERE id = ? AND post_id = ?').bind(
 				c.caption,

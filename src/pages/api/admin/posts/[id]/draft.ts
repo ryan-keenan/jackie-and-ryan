@@ -21,13 +21,13 @@ export const POST: APIRoute = ({ params }) =>
 		if ((await getPhotosForAdmin(post.id)).length === 0) {
 			throw new BadRequest('Add at least one photo before generating a draft');
 		}
-		const latest = await latestJobForPost(post.id);
+		const latest = await latestJobForPost(post.id, 'draft');
 		if (latest && (latest.status === 'queued' || latest.status === 'running')) {
 			throw new BadRequest('A draft is already being written for this post', 409);
 		}
 
 		const jobId = crypto.randomUUID();
-		await createJob({ id: jobId, postId: post.id, model });
+		await createJob({ id: jobId, postId: post.id, kind: 'draft', model });
 		await env.DRAFT_QUEUE.send({ jobId } satisfies DraftJobMessage);
 		return json({ id: jobId, status: 'queued' }, 202);
 	});

@@ -1,0 +1,330 @@
+---
+import type { JobRow } from '../lib/db';
+import { RESEARCH_PROVIDER_LABELS, RESEARCH_PROVIDERS, type Research } from '../lib/research';
+
+// The admin post page's "Background research" section: run a web research job
+// with Claude or Gemini, then review the notes (edit or remove them) before
+// drafting. Drafting uses whatever is saved here.
+
+interface Props {
+	postId: string;
+	research: Research | null;
+	/** Set when the stored research couldn't be read; it is shown instead of the notes. */
+	researchError: string | null;
+	job: JobRow | null;
+}
+
+const { postId, research, researchError, job } = Astro.props;
+
+function jobText(): string {
+	if (!job) return '';
+	if (job.status === 'queued' || job.status === 'running') {
+		return job.error ? `Researching… ${job.error}` : 'Researching… this usually takes a minute or two.';
+	}
+	if (job.status === 'failed') return `The last research failed: ${job.error}`;
+	const searches = job.web_searches !== null ? ` · ${job.web_searches} searches` : '';
+	const tokens = job.input_tokens !== null ? ` · ${job.input_tokens.toLocaleString()} in / ${job.output_tokens?.toLocaleString()} out tokens` : '';
+	return `Last researched with ${job.model}${searches}${tokens}`;
+}
+
+const running = job?.status === 'queued' || job?.status === 'running';
+const researchedOn = research && new Date(research.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+---
+
+<section class="post-section research" data-post-id={postId} data-running-job={running ? job!.id : undefined}>
+	<h2>Background research</h2>
+	<p class="hint">
+		Optional. Looks up the place and the activity on the web: history, what it's known for, what other people report. Edit or
+		remove anything wrong or off-topic; the draft uses only what's left and lists its sources at the end of the post. Researching
+		again replaces these notes.
+	</p>
+	<div class="research-bar">
+		<label class="visually-hidden" for="research-provider">Research with</label>
+		<select id="research-provider">
+			{RESEARCH_PROVIDERS.map((provider) => <option value={provider} selected={research?.provider === provider}>{RESEARCH_PROVIDER_LABELS[provider]}</option>)}
+		</select>
+		<button class="button" type="button" id="research-run" disabled={running}>{research ? 'Research again' : 'Research this trip'}</button>
+		<span class:list={['research-status', job?.status === 'failed' && 'status-error']} role="status" aria-live="polite">{jobText()}</span>
+	</div>
+
+	{researchError && <p class="status-error">The saved research can't be shown: {researchError}</p>}
+
+	{
+		research && (
+			<div class="research-results">
+				<p class="research-meta">
+					Researched <strong>{research.placeResearched}</strong> with {RESEARCH_PROVIDER_LABELS[research.provider]} ({research.model}) on {researchedOn}.
+				</p>
+				{research.items.length === 0 && <p class="hint">Every note was removed, so the draft won't use any research.</p>}
+				<ol class="research-items">
+					{research.items.map((item) => (
+						<li data-id={item.id}>
+							<textarea rows="3" maxlength="2000" aria-label="Research note">{item.text}</textarea>
+							<div class="research-foot">
+								<ul class="research-sources">
+									{item.sources.length === 0 && <li class="unverified">No source</li>}
+									{item.sources.map((source) => (
+										<li>
+											<a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>
+											{!source.verified && (
+												<span class="unverified" title="This link wasn't among the pages the search returned, so it may be wrong. Open it to check.">unverified</span>
+											)}
+										</li>
+									))}
+								</ul>
+								<button class="research-remove" type="button">Remove</button>
+							</div>
+						</li>
+					))}
+				</ol>
+				<div class="research-bar">
+					<button class="button" type="button" id="research-save" disabled>Save research</button>
+					<button class="button secondary" type="button" id="research-clear">Remove all research</button>
+					<span class="research-save-status" role="status" aria-live="polite"></span>
+				</div>
+				{
+					research.searchSuggestions.length > 0 && (
+						<div class="search-suggestions">
+							<p class="hint">Google searches behind this research:</p>
+							{research.searchSuggestions.map((html) => (
+								<iframe title="Google search suggestions" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc={html} />
+							))}
+						</div>
+					)
+				}
+			</div>
+		)
+	}
+</section>
+
+<script>
+	const section = document.querySelector<HTMLElement>('section.research')!;
+	const postId = section.dataset.postId!;
+	const runButton = document.querySelector<HTMLButtonElement>('#research-run')!;
+	const provider = document.getElementById('research-provider') as HTMLElement & { value: string };
+	const status = section.querySelector<HTMLElement>('.research-status')!;
+	const saveButton = document.querySelector<HTMLButtonElement>('#research-save');
+	const clearButton = document.querySelector<HTMLButtonElement>('#research-clear');
+	const saveStatus = section.querySelector<HTMLElement>('.research-save-status');
+	let dirty = false;
+
+	function setStatus(element: HTMLElement, text: string, ok: boolean) {
+		element.textContent = text;
+		element.classList.toggle('status-error', !ok);
+	}
+
+	async function request(method: string, body?: unknown): Promise<{ id?: string }> {
+		const response = await fetch(`/api/admin/posts/${postId}/research`, {
+			method,
+			headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+			body: body === undefined ? undefined : JSON.stringify(body),
+		});
+		const data = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
+		if (!response.ok) throw new Error(data.error ?? `Request failed (HTTP ${response.status})`);
+		return data;
+	}
+
+	const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	async function waitForResearch(jobId: string) {
+		runButton.disabled = true;
+		setStatus(status, 'Researching… this usually takes a minute or two.', true);
+		for (;;) {
+			await sleep(4000);
+			const response = await fetch(`/api/admin/jobs/${jobId}`);
+			if (!response.ok) {
+				setStatus(status, `Couldn't check the research (HTTP ${response.status}). Reload to try again.`, false);
+				return;
+			}
+			const job = (await response.json()) as { status: string; error: string | null };
+			if (job.status === 'succeeded') {
+				dirty = false;
+				location.reload();
+				return;
+			}
+			if (job.status === 'failed') {
+				setStatus(status, `The research failed: ${job.error}`, false);
+				runButton.disabled = false;
+				return;
+			}
+			if (job.error) setStatus(status, `Researching… ${job.error}`, true);
+		}
+	}
+
+	runButton.addEventListener('click', async () => {
+		if (dirty && !confirmReplace()) return;
+		runButton.disabled = true;
+		try {
+			const { id } = await request('POST', { provider: provider.value });
+			if (!id) throw new Error('The server did not return a job');
+			await waitForResearch(id);
+		} catch (error) {
+			runButton.disabled = false;
+			setStatus(status, (error as Error).message, false);
+		}
+	});
+
+	// Unsaved edits would be lost by a new run; say so in the status line instead of a dialog.
+	let replaceArmed = false;
+	function confirmReplace(): boolean {
+		if (replaceArmed) return true;
+		replaceArmed = true;
+		setStatus(status, 'You have unsaved edits. Click again to research anyway and lose them.', false);
+		setTimeout(() => (replaceArmed = false), 5000);
+		return false;
+	}
+
+	function markDirty() {
+		dirty = true;
+		if (saveButton) saveButton.disabled = false;
+		if (saveStatus) saveStatus.textContent = '';
+	}
+
+	for (const item of section.querySelectorAll<HTMLLIElement>('.research-items > li')) {
+		item.querySelector('textarea')!.addEventListener('input', markDirty);
+		item.querySelector('.research-remove')!.addEventListener('click', () => {
+			item.remove();
+			markDirty();
+		});
+	}
+
+	saveButton?.addEventListener('click', async () => {
+		const items = [...section.querySelectorAll<HTMLLIElement>('.research-items > li')].map((item) => ({
+			id: item.dataset.id!,
+			text: item.querySelector('textarea')!.value.trim(),
+		}));
+		if (items.some((item) => !item.text)) {
+			setStatus(saveStatus!, 'A note is empty. Remove it instead.', false);
+			return;
+		}
+		saveButton.disabled = true;
+		try {
+			await request('PUT', { items });
+			dirty = false;
+			setStatus(saveStatus!, 'Saved', true);
+		} catch (error) {
+			saveButton.disabled = false;
+			setStatus(saveStatus!, (error as Error).message, false);
+		}
+	});
+
+	clearButton?.addEventListener('click', async () => {
+		if (clearButton.dataset.armed !== 'true') {
+			clearButton.dataset.armed = 'true';
+			clearButton.textContent = 'Remove it all?';
+			setTimeout(() => {
+				clearButton.dataset.armed = 'false';
+				clearButton.textContent = 'Remove all research';
+			}, 4000);
+			return;
+		}
+		clearButton.disabled = true;
+		try {
+			await request('DELETE');
+			dirty = false;
+			location.reload();
+		} catch (error) {
+			clearButton.disabled = false;
+			setStatus(saveStatus!, (error as Error).message, false);
+		}
+	});
+
+	window.addEventListener('beforeunload', (event) => {
+		if (dirty) event.preventDefault();
+	});
+
+	if (section.dataset.runningJob) waitForResearch(section.dataset.runningJob);
+</script>
+
+<style>
+	.research-bar {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem 1rem;
+	}
+
+	.research-status,
+	.research-save-status {
+		font-size: 0.9rem;
+	}
+
+	.research-meta {
+		margin: 1.25rem 0 0.75rem;
+		font-size: 0.9rem;
+	}
+
+	.research-items {
+		margin: 0 0 1rem;
+		padding-left: 1.4rem;
+		display: grid;
+		gap: 1rem;
+	}
+
+	.research-items textarea {
+		display: block;
+		width: 100%;
+		/* Grows to fit the note; the admin layout's default textarea height is for long notes. */
+		field-sizing: content;
+		min-height: 0;
+		height: auto;
+		font: inherit;
+		font-size: 0.95rem;
+		resize: vertical;
+	}
+
+	#research-provider {
+		width: auto;
+	}
+
+	.research-foot {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 1rem;
+	}
+
+	.research-sources {
+		list-style: none;
+		margin: 0.25rem 0 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1rem;
+		font-size: 0.8rem;
+	}
+
+	.unverified {
+		margin-left: 0.35rem;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		background: #f6e6dc;
+		color: #8a4b2a;
+		font-size: 0.7rem;
+	}
+
+	.research-remove {
+		border: none;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 0.8rem;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+
+	.search-suggestions iframe {
+		display: block;
+		width: 100%;
+		height: 4.5rem;
+		border: none;
+	}
+
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+	}
+</style>

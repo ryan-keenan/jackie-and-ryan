@@ -1,6 +1,8 @@
 ---
 import Lightbox from '../../components/Lightbox.astro';
 import PostBody from '../../components/PostBody.astro';
+import PostSources from '../../components/PostSources.astro';
+import { parseSources } from '../../lib/research';
 import TripMap from '../../components/TripMap.astro';
 import Base from '../../layouts/Base.astro';
 import { parseBody } from '../../lib/blocks';
@@ -31,6 +33,7 @@ Astro.response.headers.set('cache-control', 'no-cache');
 		</header>
 		{map && <TripMap view={map} style={post.map_style} />}
 		<PostBody blocks={blocks} photos={photos} videos={videos} />
+		<PostSources sources={parseSources(post.sources)} />
 	</main>
 	<Lightbox />
 </Base>

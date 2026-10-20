@@ -6,17 +6,31 @@ import {
 	getPostForAdmin,
 	getVideosForPost,
 	saveDraft,
+	saveResearch,
 	updateJob,
 } from '../db';
+import { parseResearch, type Research, type ResearchProvider } from '../research';
 import { AI_MAX_PX } from '../photo-meta';
 import { thumbnailUrl } from '../stream';
 import { DraftFailed, generateDraft, isRetryable, readDraftConfig } from './draft';
+import { isRetryableResearchError, readResearchConfig, ResearchFailed, runResearch } from './research';
 
-// Runs one drafting job from the queue. Called by the queue consumer in
-// src/worker.ts, which retries the message when this returns 'retry'.
+// Runs one drafting or research job from the queue. Called by the queue
+// consumer in src/worker.ts, which retries the message when this returns 'retry'.
 
 export interface DraftJobMessage {
 	jobId: string;
+}
+
+export interface ResearchJobMessage {
+	jobId: string;
+	provider: ResearchProvider;
+}
+
+export type JobMessage = DraftJobMessage | ResearchJobMessage;
+
+export function runJob(message: JobMessage, attempt: number): Promise<'done' | 'retry'> {
+	return 'provider' in message ? runResearchJob(message, attempt) : runDraftJob(message.jobId, attempt);
 }
 
 /** Attempts per job, counting the first; matches max_retries + 1 in wrangler.jsonc. */
@@ -68,8 +82,11 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 			}),
 		);
 
+		// Only research the admins kept reaches the draft; they review it on the post page.
+		const research = parseResearch(post.research);
+
 		const client = new Anthropic({ apiKey: config.apiKey });
-		const result = await generateDraft(client, config, { post, photos, images, videos });
+		const result = await generateDraft(client, config, { post, photos, images, videos, research: research?.items ?? [] });
 
 		await saveDraft(post.id, {
 			title: result.draft.title,
@@ -78,6 +95,7 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 			body: JSON.stringify(result.draft.body),
 			captions: result.draft.captions,
 			videoCaptions: result.draft.videoCaptions,
+			sources: JSON.stringify(result.draft.sources),
 		});
 		await updateJob(jobId, {
 			status: 'succeeded',
@@ -95,6 +113,71 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 		}
 		console.error(`Drafting job ${jobId} failed: ${message}`);
 		await updateJob(jobId, { status: 'failed', error: message });
+		return 'done';
+	}
+}
+
+/** Average of the given positions, or null when there are none. */
+function centerOf(points: { lat: number | null; lon: number | null }[]): { lat: number; lon: number } | null {
+	const located = points.filter((p): p is { lat: number; lon: number } => p.lat !== null && p.lon !== null);
+	if (located.length === 0) return null;
+	return {
+		lat: located.reduce((sum, p) => sum + p.lat, 0) / located.length,
+		lon: located.reduce((sum, p) => sum + p.lon, 0) / located.length,
+	};
+}
+
+export async function runResearchJob(message: ResearchJobMessage, attempt: number): Promise<'done' | 'retry'> {
+	const { jobId, provider } = message;
+	const job = await getJob(jobId);
+	if (!job) throw new Error(`Research job ${jobId} not found`);
+	if (job.status === 'succeeded' || job.status === 'failed') return 'done';
+
+	await updateJob(jobId, { status: 'running' });
+	try {
+		const config = readResearchConfig(provider, env);
+		const post = await getPostForAdmin(job.post_id);
+		if (!post) throw new ResearchFailed('The post was deleted');
+		const photos = await getPhotosForAdmin(post.id);
+
+		const result = await runResearch(config, {
+			workingTitle: post.title,
+			location: post.location,
+			placeName: post.place_name,
+			coordinates: centerOf(photos) ?? centerOf([{ lat: post.place_lat, lon: post.place_lon }]),
+			tripStart: post.trip_start,
+			tripEnd: post.trip_end,
+			notes: post.author_notes,
+			photoNotes: photos.map((photo) => photo.note),
+		});
+		if (result.items.length === 0) throw new ResearchFailed('The research found nothing it could source. Try the other service, or a more specific Location.');
+
+		const research: Research = {
+			provider,
+			model: result.model,
+			createdAt: new Date().toISOString(),
+			placeResearched: result.placeResearched,
+			items: result.items,
+			searchSuggestions: result.searchSuggestions,
+		};
+		await saveResearch(post.id, JSON.stringify(research));
+		await updateJob(jobId, {
+			status: 'succeeded',
+			model: result.model,
+			input_tokens: result.inputTokens,
+			output_tokens: result.outputTokens,
+			web_searches: result.webSearches,
+		});
+		return 'done';
+	} catch (error) {
+		const text = error instanceof Error ? error.message : String(error);
+		if (isRetryableResearchError(error) && attempt < MAX_ATTEMPTS) {
+			console.warn(`Research job ${jobId} attempt ${attempt} failed, will retry: ${text}`);
+			await updateJob(jobId, { status: 'queued', error: `Attempt ${attempt} failed (${text}); retrying.` });
+			return 'retry';
+		}
+		console.error(`Research job ${jobId} failed: ${text}`);
+		await updateJob(jobId, { status: 'failed', error: text });
 		return 'done';
 	}
 }

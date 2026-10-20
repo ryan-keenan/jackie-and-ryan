@@ -27,12 +27,19 @@ From the story of how they met:
 </voice_reference>
 
 What may be made up and what may not:
-- Facts come only from their notes and what the photos clearly show: who was there, where they went, what happened, what anyone said. Do not invent events, names, conversations, quotes or specific facts. Use names only when the notes give them, and never try to identify people from their faces.
+- Facts about what they did come only from their notes and what the photos clearly show: who was there, where they went, what happened, what anyone said. Do not invent events, names, conversations, quotes or specific facts. Use names only when the notes give them, and never try to identify people from their faces.
+- Facts about the place or the activity may also come from the research section, described below.
 - Creativity goes into how the story is told: what to open with, what to linger on, the rhythm of the sentences, contrast, humor, and reading between the lines of a joke in their notes. A note like "my legs are done" can become a wry line about the approach; it cannot become an invented story about cramping on the descent.
 - You may use general knowledge about the place or the activity to give context (what a long approach does to your legs, what makes a granite crack a good climb), as long as you don't claim that a specific thing happened to them.
 - Feelings and reactions can come from the notes or from what is plain in the photos (a grin at the top, a cold plunge). Don't attribute feelings that nothing points to.
 - A joke can exaggerate or play with what you know, but it cannot add facts to land the punchline: where someone was when they said something, which part of the climb a photo shows, what happened just before or after.
 - The reader never sees the notes and doesn't know they exist. Never mention the notes, the captions, "the record" of what someone wrote, or how the post was put together; just tell the story.
+
+Background research:
+- Some posts include <research>: short notes about the place or the activity, found on the web and checked by Jackie and Ryan, each labeled R1, R2 and so on. Use them to add what a reader would find interesting: a bit of history, how a place got its name, what a climb or trail is known for, what people who go there tend to say about it.
+- Research is background about the place, never something that happened to them. "The lake is named for..." or "climbers know this crack for..." is fine; "we learned that..." or "Jackie had read about..." is not, unless their notes say so.
+- Use it sparingly: a sentence or two where it adds something, woven into the story, not a list of facts or a history lesson. The post is still about their day. Skip any item that doesn't fit, and don't stretch an item beyond what it says.
+- List the labels of the research items you used in research_used. Their sources are shown at the end of the post, so don't put links or source names in the text.
 
 The text between the photos:
 - Don't describe the photos. The reader is looking at them. Never write sentences like "This is the lake", "Here is Ryan wading in" or "In this photo", and don't list what is visible (the colors, the sky, the clothing, the trees). Visual description belongs in the alt text, not the post.
@@ -78,6 +85,8 @@ export interface PromptPost {
 	tripStart: string | null;
 	tripEnd: string | null;
 	notes: string;
+	/** Reviewed research notes, in the order they are labeled R1, R2, ... */
+	research: string[];
 }
 
 export interface PromptVideo {
@@ -104,7 +113,11 @@ export function photoIntro(photo: PromptPhoto): string {
 	return photo.note ? `${intro}. Their note: "${photo.note}"` : `${intro}.`;
 }
 
-/** The text after all the photos: trip details, notes and the request. */
+export function researchLabel(index: number): string {
+	return `R${index + 1}`;
+}
+
+/** The text after all the photos: trip details, notes, any research, and the request. */
 export function draftRequestText(post: PromptPost): string {
 	const dates =
 		post.tripStart && post.tripEnd && post.tripStart !== post.tripEnd
@@ -120,6 +133,9 @@ Dates: ${dates}
 ${post.notes.trim() || '(No notes were written for this post. Rely on the photos and their notes.)'}
 </notes>`,
 	];
+	if (post.research.length > 0) {
+		sections.push(`<research>\n${post.research.map((text, i) => `${researchLabel(i)}: ${text}`).join('\n')}\n</research>`);
+	}
 	sections.push('Write the post.');
 	return sections.join('\n\n');
 }

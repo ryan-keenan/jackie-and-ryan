@@ -29,6 +29,10 @@
 		"ACCESS_AUD": "ae63a700c923ac30570decbc7fd01a41f07caba63ad57fa5828471a6830f373e,da47821b9fa1a642991e12b6cde6f6dd1d9361e99abd5225868b558d5b893eec",
 		// Claude model for AI drafting, confirmed with Jackie and Ryan. ANTHROPIC_API_KEY is a secret.
 		"DRAFT_MODEL": "claude-sonnet-5-5",
+		// Models for background research with web search, one per service; the admin
+		// page picks the service per run. GEMINI_API_KEY is a secret.
+		"RESEARCH_CLAUDE_MODEL": "claude-sonnet-5-5",
+		"RESEARCH_GEMINI_MODEL": "gemini-4-argon",
 		// Cloudflare account for Stream (video) API calls; STREAM_API_TOKEN (Stream:Edit) is a secret.
 		"CF_ACCOUNT_ID": "20e6f51bcc7e4165c334278636f65709"
 	},

@@ -39,6 +39,7 @@ const goodOutput: DraftOutput = {
 	],
 	photo_captions: [{ photo: 'P1', caption: 'Arrival', alt: 'A rainy street at night' }],
 	video_captions: [],
+	research_used: [],
 };
 
 function fakeClient(response: Record<string, unknown>) {
@@ -89,6 +90,27 @@ describe('convertDraft', () => {
 	});
 });
 
+describe('convertDraft with research', () => {
+	const labels = new Map([['P1', 'id-1'], ['P2', 'id-2'], ['P3', 'id-3']]);
+	const research = [
+		{ id: 'r1', text: 'Named for eagles.', sources: [{ url: 'https://a.example/', title: 'A', verified: true }] },
+		{ id: 'r2', text: 'Popular hike.', sources: [{ url: 'https://a.example/', title: 'A', verified: true }, { url: 'https://b.example/', title: 'B', verified: false }] },
+	];
+
+	it('collects the sources of the research used, without duplicates', () => {
+		const draft = convertDraft({ ...goodOutput, research_used: ['r2', 'R1'] }, labels, new Map(), research);
+		expect(draft.sources).toEqual([
+			{ url: 'https://a.example/', title: 'A' },
+			{ url: 'https://b.example/', title: 'B' },
+		]);
+		expect(convertDraft(goodOutput, labels, new Map(), research).sources).toEqual([]);
+	});
+
+	it('rejects unknown research labels', () => {
+		expect(() => convertDraft({ ...goodOutput, research_used: ['R3'] }, labels, new Map(), research)).toThrow(/unknown research "R3"/);
+	});
+});
+
 describe('convertDraft with videos', () => {
 	const photos = new Map([['P1', 'id-1']]);
 	const videos = new Map([['V1', 'vid-1']]);
@@ -125,6 +147,14 @@ describe('buildDraftContent', () => {
 		const last = content[4] as { text: string };
 		expect(last.text).toContain('Night market on day one.');
 		expect(last.text).toContain('Dates: 2026-01-10 to 2026-01-12');
+		expect(last.text).not.toContain('<research>');
+	});
+
+	it('adds reviewed research, labeled R1, R2, before the request', () => {
+		const data = { ...input(1), research: [{ id: 'a', text: 'Named for eagles.', sources: [] }, { id: 'b', text: 'Popular hike.', sources: [] }] };
+		const content = buildDraftContent(data);
+		const last = content.at(-1) as { text: string };
+		expect(last.text).toContain('<research>\nR1: Named for eagles.\nR2: Popular hike.\n</research>\n\nWrite the post.');
 	});
 
 	it('adds each video as an introduction and a still frame after the photos', () => {

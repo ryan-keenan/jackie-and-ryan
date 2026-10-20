@@ -6,12 +6,23 @@ import { formatDuration, formatTakenAt } from '../../../lib/format';
 import { thumbnailUrl } from '../../../lib/stream';
 import { locatedCount, MAP_MODE_LABELS, MAP_MODES, MAP_STYLE_LABELS, MAP_STYLES, mapSourceHint, mapView } from '../../../lib/map';
 import TripMap from '../../../components/TripMap.astro';
+import ResearchPanel from '../../../components/ResearchPanel.astro';
+import { parseResearch, type Research } from '../../../lib/research';
 
 const post = await getPostForAdmin(Astro.params.id!);
 if (!post) return new Response('Not found', { status: 404 });
 const photos = await getPhotosForAdmin(post.id);
 const videos = await getVideosForPost(post.id);
-const job = await latestJobForPost(post.id);
+const job = await latestJobForPost(post.id, 'draft');
+const researchJob = await latestJobForPost(post.id, 'research');
+// Unreadable research is shown as an error rather than hidden, so drafting can't silently skip it.
+let research: Research | null = null;
+let researchError: string | null = null;
+try {
+	research = parseResearch(post.research);
+} catch (error) {
+	researchError = (error as Error).message;
+}
 // The preview is built at 'fit' even when the map is off, so switching it on shows it right away.
 const mapPreview = mapView('fit', photos, { lat: post.place_lat, lon: post.place_lon });
 
@@ -221,6 +232,8 @@ function jobText(): string {
 			</template>
 		</section>
 
+		<ResearchPanel postId={post.id} research={research} researchError={researchError} job={researchJob} />
+
 		<section class="post-section">
 			<h2>The post</h2>
 			<p class="hint">
@@ -332,8 +345,11 @@ function jobText(): string {
 	// ---- Map preview ----
 
 	const mapFigure = document.querySelector<HTMLElement>('.map-preview .trip-map');
-	const modeSelect = form.querySelector<HTMLSelectElement>('#map_mode')!;
-	const styleSelect = form.querySelector<HTMLSelectElement>('#map_style')!;
+	// Typed structurally: in this project HTMLSelectElement clashes with the
+	// Cloudflare runtime's own Element type (worker-configuration.d.ts).
+	type Select = HTMLElement & { value: string; selectedIndex: number; options: { length: number } };
+	const modeSelect = document.getElementById('map_mode') as Select;
+	const styleSelect = document.getElementById('map_style') as Select;
 	function updateMapPreview() {
 		mapFigure?.dispatchEvent(new CustomEvent('trip-map:update', { detail: { mode: modeSelect.value, style: styleSelect.value } }));
 	}
