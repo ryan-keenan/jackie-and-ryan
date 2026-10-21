@@ -1,3 +1,4 @@
+import type { APIContext, MiddlewareNext } from 'astro';
 import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { AccessDenied, accessCookieToken, readAccessConfig, verifyAdmin } from './lib/access';
@@ -36,12 +37,21 @@ async function isSignedInAdmin(request: Request): Promise<boolean> {
 	}
 }
 
+// The site is public for anyone with a link, but kept out of search engines. The
+// same header is set on static files in public/_headers.
 export const onRequest = defineMiddleware(async (context, next) => {
+	const response = await route(context, next);
+	response.headers.set('x-robots-tag', 'noindex');
+	return response;
+});
+
+async function route(context: APIContext, next: MiddlewareNext): Promise<Response> {
 	// One address for the site: www.jackieandryan.us -> jackieandryan.us, same path.
 	if (context.url.hostname.startsWith('www.')) {
 		const target = new URL(context.url);
 		target.hostname = target.hostname.slice('www.'.length);
-		return Response.redirect(target.toString(), 301);
+		// Not Response.redirect: its headers can't be changed afterwards.
+		return new Response(null, { status: 301, headers: { location: target.toString() } });
 	}
 
 	if (!isAdminPath(context.url.pathname)) {
@@ -80,4 +90,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	// Admin pages show drafts and private photos; never cache them anywhere.
 	response.headers.set('cache-control', 'private, no-store');
 	return response;
-});
+}

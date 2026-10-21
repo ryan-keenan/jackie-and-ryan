@@ -24,7 +24,7 @@ npx astro preview       # serve the production build in the local Cloudflare run
 Local data lives in `.wrangler/state` (gitignored) and is shared by `npm run dev`, `astro preview` and `wrangler --local` commands. Nothing local touches the deployed database or photo storage.
 
 ### Deployment
-Run `npm run build && npx wrangler deploy` to deploy to Cloudflare Workers. The Worker serves https://jackieandryan.us (www redirects to it) through the `routes` in `wrangler.jsonc`. Public pages (the homepage, published public posts and the wedding page) are open to anyone. Only `/admin` and `/api/admin` are behind a Cloudflare Access login (Google or an emailed one-time code) for the two admins. GitHub Pages is turned off and nothing deploys on push.
+Run `npm run build && npx wrangler deploy` to deploy to Cloudflare Workers. The Worker serves https://jackieandryan.us (www redirects to it) through the `routes` in `wrangler.jsonc`. Public pages (the homepage, published public posts and the wedding page) are open to anyone. Only `/admin` and `/api/admin` are behind a Cloudflare Access login (Google or an emailed one-time code) for the two admins. Every response carries `X-Robots-Tag: noindex` (`src/middleware.ts`, and `public/_headers` for static files) so search engines leave the site out. GitHub Pages is turned off and nothing deploys on push.
 
 ## Architecture
 

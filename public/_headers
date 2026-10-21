@@ -1,0 +1,3 @@
+# Keeps the site out of search engines; pages get the same header from src/middleware.ts.
+/*
+  X-Robots-Tag: noindex
