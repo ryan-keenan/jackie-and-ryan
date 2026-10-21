@@ -235,6 +235,11 @@ export async function drawTripMap(container: HTMLElement, view: MapView, style: 
 		cooperativeGestures: true,
 	});
 	map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
+	// The map sources require credit (OpenStreetMap, OpenMapTiles, Sentinel-2's
+	// CC BY-NC-SA). On narrow maps MapLibre folds the credit line into an ⓘ button
+	// but opens it at first, closing it only once the map is dragged; start it
+	// closed so it doesn't cover a phone-sized map. Wider maps keep the full line.
+	map.once('load', () => container.querySelector('.maplibregl-compact')?.classList.remove('maplibregl-compact-show'));
 
 	// The label hangs off the dot without changing its size, so the dot stays
 	// centered on the place.
