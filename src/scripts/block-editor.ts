@@ -133,7 +133,8 @@ export class BlockEditor {
 	private captionField(target: CaptionTarget): HTMLElement {
 		const item = target.kind === 'photo' ? this.photosById.get(target.id) : this.videosById.get(target.id);
 		const input = el('textarea', {
-			className: 'caption-input',
+			// text-public: tinted green on the admin page because it appears in the post.
+			className: 'caption-input text-public',
 			rows: 1,
 			maxLength: 500,
 			value: item?.caption ?? '',
@@ -171,18 +172,18 @@ export class BlockEditor {
 		};
 		switch (block.type) {
 			case 'heading': {
-				const input = el('input', { type: 'text', value: block.text, className: 'block-heading' });
+				const input = el('input', { type: 'text', value: block.text, className: 'block-heading text-public' });
 				input.addEventListener('input', () => update({ type: 'heading', text: input.value }));
 				return input;
 			}
 			case 'paragraph': {
-				const area = el('textarea', { value: block.markdown, rows: Math.max(3, Math.ceil(block.markdown.length / 90)) });
+				const area = el('textarea', { className: 'text-public', value: block.markdown, rows: Math.max(3, Math.ceil(block.markdown.length / 90)) });
 				area.addEventListener('input', () => update({ type: 'paragraph', markdown: area.value }));
 				return area;
 			}
 			case 'quote': {
-				const text = el('textarea', { value: block.text, rows: 2 });
-				const by = el('input', { type: 'text', value: block.attribution ?? '', placeholder: 'Who said it (optional)' });
+				const text = el('textarea', { className: 'text-public', value: block.text, rows: 2 });
+				const by = el('input', { type: 'text', className: 'text-public', value: block.attribution ?? '', placeholder: 'Who said it (optional)' });
 				const save = () =>
 					update(by.value.trim() ? { type: 'quote', text: text.value, attribution: by.value } : { type: 'quote', text: text.value });
 				text.addEventListener('input', save);

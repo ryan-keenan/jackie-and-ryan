@@ -66,6 +66,47 @@ const email = Astro.locals.adminEmail;
 		line-height: 1.6;
 	}
 
+	/* Text boxes are tinted by where their text goes: blue only guides the AI and
+	   is never shown, green appears in the post. .text-legend explains it. */
+	.admin-main :is(input, textarea).text-guide {
+		background: #e5eefb;
+		border-color: #8fb0e3;
+	}
+
+	.admin-main :is(input, textarea).text-public {
+		background: #e4f3e7;
+		border-color: #86c093;
+	}
+
+	.text-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem 1.25rem;
+		margin: 0 0 1.5rem;
+		font-size: 0.85rem;
+		color: var(--muted);
+	}
+
+	.text-legend span::before {
+		content: '';
+		display: inline-block;
+		width: 0.9em;
+		height: 0.9em;
+		margin-right: 0.4rem;
+		vertical-align: -0.1em;
+		border-radius: 3px;
+	}
+
+	.text-legend .guide::before {
+		background: #e5eefb;
+		border: 1px solid #8fb0e3;
+	}
+
+	.text-legend .public::before {
+		background: #e4f3e7;
+		border: 1px solid #86c093;
+	}
+
 	.admin-main input:focus,
 	.admin-main select:focus,
 	.admin-main textarea:focus {

@@ -59,7 +59,7 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 				<ol class="research-items">
 					{research.items.map((item) => (
 						<li data-id={item.id}>
-							<textarea rows="3" maxlength="2000" aria-label="Research note">{item.text}</textarea>
+							<textarea class="text-guide" rows="3" maxlength="2000" aria-label="Research note">{item.text}</textarea>
 							<div class="research-foot">
 								<ul class="research-sources">
 									{item.sources.length === 0 && <li class="unverified">No source</li>}

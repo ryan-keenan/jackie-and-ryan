@@ -89,16 +89,20 @@ function jobText(): string {
 			<span class:list={['badge', post.status]}>{post.status === 'draft' ? 'Draft' : 'Published'}</span>
 			{post.status === 'published' && post.visibility === 'public' && <a href={`/posts/${post.slug}`}>View post</a>}
 		</header>
+		<p class="text-legend">
+			<span class="guide">Blue boxes guide the AI and are never shown</span>
+			<span class="public">Green boxes appear in the post</span>
+		</p>
 
 		<form class="details" id="details-form" novalidate>
 			<div class="grid">
 				<div class="span-2">
 					<label for="title">Title</label>
-					<input id="title" name="title" type="text" required maxlength="200" value={post.title} />
+					<input class="text-public" id="title" name="title" type="text" required maxlength="200" value={post.title} />
 				</div>
 				<div class="span-2">
 					<label for="location">Where</label>
-					<input id="location" name="location" type="text" maxlength="200" value={post.location} placeholder="e.g. Taipei and Hualien, Taiwan" />
+					<input class="text-public" id="location" name="location" type="text" maxlength="200" value={post.location} placeholder="e.g. Taipei and Hualien, Taiwan" />
 				</div>
 				<div>
 					<label for="trip_start">From</label>
@@ -124,7 +128,7 @@ function jobText(): string {
 				<div class="span-2">
 					<label for="map_pin">Map pin</label>
 					<div class="pin-picker">
-						<input id="map_pin" type="text" maxlength="200" value={post.map_pin} placeholder="Empty: found from the post" aria-describedby="map-pin-help" />
+						<input class="text-public" id="map_pin" type="text" maxlength="200" value={post.map_pin} placeholder="Empty: found from the post" aria-describedby="map-pin-help" />
 						<button type="button" class="button secondary" id="find-place">Find the place</button>
 					</div>
 					<p class="field-hint" id="map-pin-help">
@@ -159,7 +163,7 @@ function jobText(): string {
 				}
 				<div class="span-4">
 					<label for="author_notes">Notes</label>
-					<textarea id="author_notes" name="author_notes" maxlength="20000" placeholder="What happened? Rough notes are fine: places, who you were with, funny moments, what you ate. The AI will write the post from these and the photos.">{post.author_notes}</textarea>
+					<textarea class="text-guide" id="author_notes" name="author_notes" maxlength="20000" placeholder="What happened? Rough notes are fine: places, who you were with, funny moments, what you ate. The AI will write the post from these and the photos.">{post.author_notes}</textarea>
 				</div>
 			</div>
 			<div class="actions">
@@ -182,11 +186,11 @@ function jobText(): string {
 						<li class="photo-card" data-photo-id={photo.id}>
 							<img src={`/api/admin/media/${photo.r2_key_thumb}`} alt="" loading="lazy" />
 							<p class="taken">{formatTakenAt(photo.taken_at)}</p>
-							<input class="photo-text" data-field="note" type="text" maxlength="500" value={photo.note} placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+							<input class="photo-text text-guide" data-field="note" type="text" maxlength="500" value={photo.note} placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
 							<details class="caption-fields">
 								<summary>Caption and alt text</summary>
-								<input class="photo-text" data-field="caption" type="text" maxlength="500" value={photo.caption} placeholder="Caption shown under the photo" aria-label="Caption" />
-								<input class="photo-text" data-field="alt" type="text" maxlength="500" value={photo.alt} placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
+								<input class="photo-text text-public" data-field="caption" type="text" maxlength="500" value={photo.caption} placeholder="Caption shown under the photo" aria-label="Caption" />
+								<input class="photo-text text-public" data-field="alt" type="text" maxlength="500" value={photo.alt} placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
 							</details>
 							<div class="card-actions">
 								<span class="card-status" role="status" />
@@ -201,11 +205,11 @@ function jobText(): string {
 				<li class="photo-card">
 					<img alt="" />
 					<p class="taken"></p>
-					<input class="photo-text" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
+					<input class="photo-text text-guide" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
 					<details class="caption-fields">
 						<summary>Caption and alt text</summary>
-						<input class="photo-text" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the photo" aria-label="Caption" />
-						<input class="photo-text" data-field="alt" type="text" maxlength="500" placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
+						<input class="photo-text text-public" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the photo" aria-label="Caption" />
+						<input class="photo-text text-public" data-field="alt" type="text" maxlength="500" placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
 					</details>
 					<div class="card-actions">
 						<span class="card-status" role="status"></span>
@@ -224,8 +228,8 @@ function jobText(): string {
 							<div class="video-body">
 								<p class="video-name">{video.file_name || 'Untitled video'} <span class="video-duration">{formatDuration(video.duration)}</span></p>
 								<p class:list={['video-state', (video.status === 'error' || video.status === 'uploading') && 'status-error']}>{video.status === 'error' && video.error ? `${videoStatusText.error} ${video.error}` : videoStatusText[video.status]}</p>
-								<input class="video-text" data-field="note" type="text" maxlength="500" value={video.note} placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
-								<input class="video-text" data-field="caption" type="text" maxlength="500" value={video.caption} placeholder="Caption shown under the video" aria-label="Caption" />
+								<input class="video-text text-guide" data-field="note" type="text" maxlength="500" value={video.note} placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
+								<input class="video-text text-public" data-field="caption" type="text" maxlength="500" value={video.caption} placeholder="Caption shown under the video" aria-label="Caption" />
 								<div class="card-actions">
 									<span class="card-status" role="status" />
 									<button class="delete" type="button">Delete</button>
@@ -241,8 +245,8 @@ function jobText(): string {
 					<div class="video-body">
 						<p class="video-name"><span class="name"></span> <span class="video-duration"></span></p>
 						<p class="video-state">Starting upload…</p>
-						<input class="video-text" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
-						<input class="video-text" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the video" aria-label="Caption" />
+						<input class="video-text text-guide" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
+						<input class="video-text text-public" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the video" aria-label="Caption" />
 						<div class="card-actions">
 							<span class="card-status" role="status"></span>
 							<button class="delete" type="button">Delete</button>
@@ -269,7 +273,7 @@ function jobText(): string {
 			<div class="editor" hidden={blocks.length === 0}>
 				<div class="editor-head">
 					<label for="summary">Summary (shown under the title and on the homepage)</label>
-					<textarea id="summary" rows="2" maxlength="500">{post.summary}</textarea>
+					<textarea class="text-public" id="summary" rows="2" maxlength="500">{post.summary}</textarea>
 				</div>
 				<div id="block-editor"></div>
 			</div>
