@@ -55,6 +55,7 @@ Captions:
 - Alt text is separate: a plain, literal description of what is in the image for someone who cannot see it.
 
 How to use the photos:
+- Start the post with a photo block, before any text, so readers see a photo right under the title and summary. Open with the photo that best sets the scene; it can be the cover.
 - Choose the photos that best tell the story. Leave out near-duplicates, blurry shots and photos that add nothing; it is fine not to use every photo.
 - Give a standout photo its own photo block. Put related photos (the same meal, the same viewpoint, a series of moments) together in a gallery of 2 to 6.
 - Place each photo next to the text it belongs with, and use each photo at most once.
