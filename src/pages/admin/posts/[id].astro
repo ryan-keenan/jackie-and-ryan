@@ -124,11 +124,20 @@ function jobText(): string {
 				<div class="span-2">
 					<label for="map_pin">Map pin</label>
 					<div class="pin-picker">
-						<input id="map_pin" name="map_pin" type="text" maxlength="200" value={post.map_pin} placeholder={post.location ? `Empty: uses Where (${post.location})` : 'e.g. Black Velvet Canyon, Nevada, USA'} />
+						<input id="map_pin" type="text" maxlength="200" value={post.map_pin} placeholder="Empty: found from the post" aria-describedby="map-pin-help" />
 						<button type="button" class="button secondary" id="find-place">Find the place</button>
 					</div>
+					<p class="field-hint" id="map-pin-help">
+						Leave it empty to find the place from the post, or type a place (such as "Black Velvet Peak") to pin that. Find the place looks up its coordinates on the web.
+					</p>
 					<p class="field-hint" data-pin-reason hidden></p>
-					<p class="field-hint" data-map-hint data-located={locatedCount(photos)}>{mapSourceHint(post.place_name, locatedCount(photos))}</p>
+					<p class="field-hint">
+						<span data-map-hint data-located={locatedCount(photos)}>
+							{mapSourceHint({ name: post.place_name, source: post.place_source, lat: post.place_lat, lon: post.place_lon }, locatedCount(photos))}
+						</span>
+						<a data-pin-source href={post.place_source || undefined} target="_blank" rel="noopener noreferrer" hidden={!post.place_source}>Check the source</a>
+						<span class="unverified" data-pin-unverified hidden title="This page wasn't among those the search returned, so the coordinates may be wrong. Open it to check.">unverified</span>
+					</p>
 				</div>
 				<div class="span-2">
 					<label for="map_style">Map style</label>
@@ -331,7 +340,6 @@ function jobText(): string {
 			visibility: value('visibility'),
 			map_mode: value('map_mode'),
 			map_style: value('map_style'),
-			map_pin: value('map_pin').trim(),
 			author_notes: value('author_notes'),
 		};
 	}
@@ -343,8 +351,8 @@ function jobText(): string {
 		try {
 			const result = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', details)) as PlaceUpdate;
 			document.querySelector('[data-title-display]')!.textContent = details.title;
-			// A changed map pin or Location was looked up again; show what it matched.
-			if (result.place !== undefined) showPlace(result.place?.name ?? '', result.view ?? null);
+			// A post without a map pin follows its Location, which was looked up again.
+			if (result.place) showPlace(result.place, null, result.view ?? null);
 			setStatus(saveStatus, 'Saved', true);
 		} catch (error) {
 			setStatus(saveStatus, (error as Error).message, false);
@@ -353,15 +361,24 @@ function jobText(): string {
 
 	// ---- Map pin and preview ----
 
-	type PlaceUpdate = { place?: { name: string } | null; view?: MapView | null };
+	type Place = { name: string; source: string; lat: number | null; lon: number | null };
+	type PlaceUpdate = { place?: Place; view?: MapView | null };
 	const pinInput = document.getElementById('map_pin') as HTMLInputElement;
 	const pinReason = document.querySelector<HTMLElement>('[data-pin-reason]')!;
 	const findButton = document.querySelector<HTMLButtonElement>('#find-place')!;
 
-	/** Shows the matched place and moves the preview pin; the page has no preview until a post first has a place, so it reloads then. */
-	function showPlace(placeName: string, view: MapView | null) {
+	/**
+	 * Shows where the pin is and where its coordinates came from, and moves the
+	 * preview pin. The page has no preview until a post first has a place, so it
+	 * reloads then. `verified` is null when unknown (the pin didn't come from a web page).
+	 */
+	function showPlace(place: Place, verified: boolean | null, view: MapView | null) {
 		const hint = document.querySelector<HTMLElement>('[data-map-hint]')!;
-		hint.textContent = mapSourceHint(placeName, Number(hint.dataset.located));
+		hint.textContent = mapSourceHint(place, Number(hint.dataset.located));
+		const sourceLink = document.querySelector<HTMLAnchorElement>('[data-pin-source]')!;
+		sourceLink.hidden = !place.source;
+		if (place.source) sourceLink.href = place.source;
+		document.querySelector<HTMLElement>('[data-pin-unverified]')!.hidden = !place.source || verified !== false;
 		if (!view) return;
 		if (!mapFigure) {
 			location.reload();
@@ -372,22 +389,23 @@ function jobText(): string {
 
 	// Saves the details first, so the AI reads the notes as they are on the page.
 	findButton.addEventListener('click', async () => {
+		const wanted = pinInput.value.trim();
 		findButton.disabled = true;
 		pinReason.hidden = false;
-		setStatus(pinReason, 'Saving details, then reading the post to find its place…', true);
+		setStatus(pinReason, wanted ? `Searching the web for ${wanted}…` : 'Reading the post and searching the web for its place…', true);
 		try {
-			const saved = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', detailsFromForm())) as PlaceUpdate;
-			if (saved.place !== undefined) showPlace(saved.place?.name ?? '', null);
-			const found = (await sendJson(`/api/admin/posts/${postId}/place`, 'POST')) as {
-				pin: string;
+			await sendJson(`/api/admin/posts/${postId}`, 'PATCH', detailsFromForm());
+			const found = (await sendJson(`/api/admin/posts/${postId}/place`, 'POST', { request: wanted })) as {
+				label: string;
 				confident: boolean;
 				reason: string;
-				placeName: string;
+				place: Place;
+				sourceVerified: boolean | null;
 				view: MapView | null;
 			};
-			pinInput.value = found.pin;
-			setStatus(pinReason, found.confident ? found.reason : `Not sure: ${found.reason} Edit the map pin if it's wrong.`, found.confident);
-			showPlace(found.placeName, found.view);
+			pinInput.value = found.label;
+			setStatus(pinReason, found.confident ? found.reason : `Not sure: ${found.reason} Check the pin, or type a more specific place.`, found.confident);
+			showPlace(found.place, found.sourceVerified, found.view);
 		} catch (error) {
 			setStatus(pinReason, (error as Error).message, false);
 		} finally {
@@ -889,6 +907,19 @@ function jobText(): string {
 
 	.pin-picker button {
 		white-space: nowrap;
+	}
+
+	[data-pin-source] {
+		margin-left: 0.35rem;
+	}
+
+	.unverified {
+		margin-left: 0.35rem;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		background: #f6e6dc;
+		color: #8a4b2a;
+		font-size: 0.7rem;
 	}
 
 	.style-picker select {

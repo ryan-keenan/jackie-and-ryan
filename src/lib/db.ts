@@ -21,6 +21,8 @@ export interface PostRow {
 	place_lat: number | null;
 	place_lon: number | null;
 	place_name: string;
+	/** The web page the pin's coordinates came from; empty when they came from an OpenStreetMap lookup. */
+	place_source: string;
 	/** JSON research notes (src/lib/research.ts), or null if never researched. */
 	research: string | null;
 	published_at: string | null;
@@ -48,7 +50,7 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, map_pin, place_lat, place_lon, place_name, research, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, map_pin, place_lat, place_lon, place_name, place_source, research, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
 	const { results } = await env.DB.prepare(
@@ -198,6 +200,7 @@ export interface PostDetailsUpdate {
 	place_lat?: number | null;
 	place_lon?: number | null;
 	place_name?: string;
+	place_source?: string;
 }
 
 const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
@@ -213,6 +216,7 @@ const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
 	'place_lat',
 	'place_lon',
 	'place_name',
+	'place_source',
 ];
 
 export async function updatePostDetails(id: string, update: PostDetailsUpdate): Promise<boolean> {

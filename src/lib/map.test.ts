@@ -14,9 +14,9 @@ describe('mapView', () => {
 		expect(mapView('country', [noGps, noGps], noPlace)).toBeNull();
 	});
 
-	it('puts one labeled pin on the place, rounded to about 1 km, even when photos have positions', () => {
+	it('puts one labeled pin on the place, rounded to about 100 m, even when photos have positions', () => {
 		const view = mapView('fit', [taipei, longdong], blackVelvet)!;
-		expect(view).toEqual({ mode: 'fit', source: 'place', pin: [-115.45, 36.03], label: 'Black Velvet Canyon', zoom: 9.3 });
+		expect(view).toEqual({ mode: 'fit', source: 'place', pin: [-115.448, 36.034], label: 'Black Velvet Canyon', zoom: 9.3 });
 	});
 
 	it('without a place, puts an unlabeled pin in the middle of the photos', () => {
@@ -26,8 +26,8 @@ describe('mapView', () => {
 });
 
 describe('pinLabel', () => {
-	it('is the map pin text, or else the Location, up to the first comma', () => {
-		expect(pinLabel('Black Velvet Canyon, Nevada, USA', 'Red Rocks')).toBe('Black Velvet Canyon');
+	it('is the map pin, or else the Location up to its first comma', () => {
+		expect(pinLabel('Epinephrine, Black Velvet Wall', 'Red Rocks')).toBe('Epinephrine, Black Velvet Wall');
 		expect(pinLabel('  ', 'Squamish, British Columbia')).toBe('Squamish');
 		expect(pinLabel('', '')).toBe('');
 	});

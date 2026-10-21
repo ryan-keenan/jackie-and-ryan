@@ -4,7 +4,7 @@ import { MAP_MODES, MAP_STYLES } from '../../../../lib/map';
 import { getPostForAdmin, updatePostDetails, type PostDetailsUpdate } from '../../../../lib/db';
 import { GeocodeFailed } from '../../../../lib/geocode';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
-import { placeColumns, previewMapView } from '../../../../lib/post-place';
+import { locationPlaceColumns, previewMapView } from '../../../../lib/post-place';
 
 const isoDate = z
 	.string()
@@ -22,7 +22,6 @@ const detailsSchema = z
 		location: z.string().trim().max(200),
 		map_mode: z.enum(MAP_MODES),
 		map_style: z.enum(MAP_STYLES),
-		map_pin: z.string().trim().max(200),
 	})
 	.partial()
 	.strict()
@@ -31,29 +30,26 @@ const detailsSchema = z
 		path: ['trip_end'],
 	});
 
-// The map pin marks the place the map pin text names or, without one, the
-// Location's. When the text it uses changes, it is looked up again, and the reply
-// includes the matched place (null for no match) and the new map preview so the
-// page can show them. A failed lookup fails the save rather than leaving the pin
-// on the old place.
+// A post whose place has never been found (no map pin) has its pin on the
+// Location, so a changed Location is looked up again, and the reply includes the
+// matched place (null for no match) and the new map preview so the page can show
+// them. A failed lookup fails the save rather than leaving the pin on the old
+// place. Posts with a map pin keep it until "Find the place" is used again.
 export const PATCH: APIRoute = ({ params, request }) =>
 	handle(async () => {
 		const details = parseWith(detailsSchema, await readJson(request));
 		const post = await getPostForAdmin(params.id!);
 		if (!post) throw new BadRequest('Post not found', 404);
 		const update: PostDetailsUpdate = { ...details };
-		const mapPin = details.map_pin ?? post.map_pin;
-		const location = details.location ?? post.location;
-		const lookupText = (pin: string, fallback: string) => pin.trim() || fallback.trim();
-		let place: { name: string } | null | undefined;
-		if (lookupText(mapPin, location) !== lookupText(post.map_pin, post.location)) {
+		let place: { name: string; source: string; lat: number | null; lon: number | null } | undefined;
+		if (!post.map_pin.trim() && details.location !== undefined && details.location !== post.location) {
 			try {
-				Object.assign(update, await placeColumns(mapPin, location));
+				Object.assign(update, await locationPlaceColumns(details.location));
 			} catch (error) {
 				if (!(error instanceof GeocodeFailed)) throw error;
-				throw new BadRequest(`Not saved: couldn\u2019t look up the map pin. ${error.message}. Try again.`, 502);
+				throw new BadRequest(`Not saved: couldn\u2019t look up the Location for the map. ${error.message}. Try again.`, 502);
 			}
-			place = update.place_name ? { name: update.place_name } : null;
+			place = { name: update.place_name ?? '', source: '', lat: update.place_lat ?? null, lon: update.place_lon ?? null };
 		}
 		if (!(await updatePostDetails(post.id, update))) throw new BadRequest('Post not found', 404);
 		return json({ ok: true, place, view: place === undefined ? undefined : await previewMapView(post.id) });
