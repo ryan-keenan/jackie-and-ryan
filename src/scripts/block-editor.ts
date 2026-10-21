@@ -2,9 +2,11 @@ import type { Block } from '../lib/blocks';
 
 // Editor for a post body: a list of blocks that can be edited, reordered,
 // removed and added. It renders into `root` and reports every change through
-// onChange; saving is up to the page. Photo and video captions are edited under
-// each photo or video too, but they belong to the photo or video rather than
-// the body, so they are saved on their own through onCaption.
+// onChange; saving is up to the page. Photo captions and alt text, and video
+// captions, are edited under each photo or video here (the only place they are
+// edited), but they belong to the photo or video rather than the body, so they
+// are saved on their own through onMediaText. The map block shows a live map
+// the page supplies.
 
 export interface EditorPhoto {
 	id: string;
@@ -12,6 +14,7 @@ export interface EditorPhoto {
 	label: string;
 	thumbUrl: string;
 	caption: string;
+	alt: string;
 }
 
 export interface EditorVideo {
@@ -23,7 +26,14 @@ export interface EditorVideo {
 	caption: string;
 }
 
-export type CaptionTarget = { kind: 'photo' | 'video'; id: string };
+/** One caption or alt text box: alt text is for photos only. */
+export type MediaTextTarget = { kind: 'photo' | 'video'; id: string; field: 'caption' | 'alt' };
+
+/** The live map shown in the map block. `shown` is called each time it is placed in the page. */
+export interface EditorMap {
+	element: HTMLElement;
+	shown: () => void;
+}
 
 type BlockType = Block['type'];
 
@@ -59,8 +69,9 @@ export class BlockEditor {
 		private readonly photos: EditorPhoto[],
 		private readonly videos: EditorVideo[],
 		private readonly onChange: () => void,
-		/** Saves one caption; rejects with a message to show if saving fails. */
-		private readonly onCaption: (target: CaptionTarget, caption: string) => Promise<void>,
+		/** Saves one caption or alt text; rejects with a message to show if saving fails. */
+		private readonly onMediaText: (target: MediaTextTarget, value: string) => Promise<void>,
+		private readonly map: EditorMap | null = null,
 	) {
 		this.blocks = structuredClone(initial);
 		this.photosById = new Map(photos.map((photo) => [photo.id, photo]));
@@ -75,23 +86,14 @@ export class BlockEditor {
 		this.render();
 	}
 
-	/** Adds a newly uploaded video, or updates one (e.g. its still frame once processed). */
-	setVideo(video: EditorVideo) {
+	/** Adds a newly uploaded video, or updates one (e.g. its still frame once processed), keeping a caption already edited here. */
+	setVideo(video: Omit<EditorVideo, 'caption'>) {
 		const index = this.videos.findIndex((v) => v.id === video.id);
-		if (index >= 0) this.videos[index] = video;
-		else this.videos.push(video);
-		this.videosById.set(video.id, video);
+		const next = { ...video, caption: index >= 0 ? this.videos[index].caption : '' };
+		if (index >= 0) this.videos[index] = next;
+		else this.videos.push(next);
+		this.videosById.set(video.id, next);
 		this.render();
-	}
-
-	/** Updates a caption edited elsewhere on the page (the photo and video cards). */
-	setCaption(target: CaptionTarget, caption: string) {
-		const item = target.kind === 'photo' ? this.photosById.get(target.id) : this.videosById.get(target.id);
-		if (!item) return;
-		item.caption = caption;
-		for (const input of this.root.querySelectorAll<HTMLTextAreaElement>(`textarea.caption-input[data-${target.kind}-id="${target.id}"]`)) {
-			input.value = caption;
-		}
 	}
 
 	getBlocks(): Block[] {
@@ -129,35 +131,45 @@ export class BlockEditor {
 			: el('div', { className: 'block-thumb video-processing', textContent: 'Processing…' });
 	}
 
-	/** A caption box that saves when it loses focus, with a status line under it. */
-	private captionField(target: CaptionTarget): HTMLElement {
+	/** A labeled caption or alt text box that saves when it loses focus, with a status line under it. */
+	private mediaTextField(target: MediaTextTarget): HTMLElement {
 		const item = target.kind === 'photo' ? this.photosById.get(target.id) : this.videosById.get(target.id);
+		const isAlt = target.field === 'alt';
+		const name = isAlt ? 'Alt text' : 'Caption';
 		const input = el('textarea', {
 			// text-public: tinted green on the admin page because it appears in the post.
 			className: 'caption-input text-public',
 			rows: 1,
 			maxLength: 500,
-			value: item?.caption ?? '',
-			placeholder: target.kind === 'photo' ? 'Caption shown under the photo' : 'Caption shown under the video',
+			value: (isAlt ? (item as EditorPhoto | undefined)?.alt : item?.caption) ?? '',
+			placeholder: isAlt ? 'Describes the photo for people using screen readers' : `Shown under the ${target.kind}`,
 		});
-		input.setAttribute('aria-label', 'Caption');
-		input.dataset[`${target.kind}Id`] = target.id;
 		const status = el('span', { className: 'caption-status' });
 		status.setAttribute('role', 'status');
 		input.addEventListener('change', async () => {
-			const caption = input.value.trim();
+			const value = input.value.trim();
 			status.textContent = 'Saving…';
 			status.classList.remove('status-error');
 			try {
-				await this.onCaption(target, caption);
-				if (item) item.caption = caption;
-				status.textContent = 'Caption saved';
+				await this.onMediaText(target, value);
+				if (item && isAlt) (item as EditorPhoto).alt = value;
+				else if (item) item.caption = value;
+				status.textContent = `${name} saved`;
 			} catch (error) {
 				status.textContent = (error as Error).message;
 				status.classList.add('status-error');
 			}
 		});
-		return el('div', { className: 'caption-field' }, input, status);
+		const label = el('label', { className: 'caption-label' }, name, input);
+		return el('div', { className: 'caption-field' }, label, status);
+	}
+
+	/** Caption and alt text boxes for one photo. */
+	private photoTextFields(photoId: string): HTMLElement[] {
+		return [
+			this.mediaTextField({ kind: 'photo', id: photoId, field: 'caption' }),
+			this.mediaTextField({ kind: 'photo', id: photoId, field: 'alt' }),
+		];
 	}
 
 	private thumb(photoId: string): HTMLImageElement {
@@ -191,10 +203,12 @@ export class BlockEditor {
 				return el('div', { className: 'stack' }, text, by);
 			}
 			case 'map':
-				return el('p', {
-					className: 'hint',
-					textContent: 'The map goes here. Its pin, zoom and style are set under the post details above; a map set to "No map" is not shown.',
-				});
+				return el(
+					'div',
+					{ className: 'stack' },
+					el('p', { className: 'hint', textContent: 'The map goes here. Its pin, zoom and style are set in the post details above.' }),
+					...(this.map ? [this.map.element] : []),
+				);
 			case 'photo':
 				return el(
 					'div',
@@ -207,7 +221,7 @@ export class BlockEditor {
 							this.blocks[index] = { type: 'photo', photoId: id };
 							this.changed();
 						}),
-						this.captionField({ kind: 'photo', id: block.photoId }),
+						...this.photoTextFields(block.photoId),
 					),
 				);
 			case 'video':
@@ -222,7 +236,7 @@ export class BlockEditor {
 							this.blocks[index] = { type: 'video', videoId: id };
 							this.changed();
 						}),
-						this.captionField({ kind: 'video', id: block.videoId }),
+						this.mediaTextField({ kind: 'video', id: block.videoId, field: 'caption' }),
 					),
 				);
 			case 'gallery': {
@@ -233,7 +247,7 @@ export class BlockEditor {
 						this.blocks[index] = { type: 'gallery', photoIds };
 						this.changed();
 					});
-					return el('div', { className: 'gallery-item' }, this.thumb(id), this.captionField({ kind: 'photo', id }), remove);
+					return el('div', { className: 'gallery-item' }, this.thumb(id), ...this.photoTextFields(id), remove);
 				});
 				const add = this.photoSelect(null, (id) => {
 					this.blocks[index] = { type: 'gallery', photoIds: [...block.photoIds, id] };
@@ -317,5 +331,7 @@ export class BlockEditor {
 			addBar.appendChild(button);
 		}
 		this.root.appendChild(addBar);
+		// The map is drawn once and moved into each re-render; it needs telling when it is back in the page.
+		if (this.map && this.hasMap()) this.map.shown();
 	}
 }

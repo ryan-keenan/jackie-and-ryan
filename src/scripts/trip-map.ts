@@ -220,6 +220,8 @@ const STYLES: Record<MapStyle, () => Promise<StyleSpecification> | StyleSpecific
 export interface TripMap {
 	/** Redraws the map in another style and zoom setting, and moves the pin if given a new view, for the admin preview. */
 	update(mode: Exclude<MapMode, 'off'>, style: MapStyle, view?: MapView): Promise<void>;
+	/** Refits the map to its container, after the container was moved or resized. */
+	resize(): void;
 }
 
 export async function drawTripMap(container: HTMLElement, view: MapView, style: MapStyle): Promise<TripMap> {
@@ -265,6 +267,9 @@ export async function drawTripMap(container: HTMLElement, view: MapView, style: 
 	placeCamera(view.mode, style);
 	let shown = style;
 	return {
+		resize() {
+			map.resize();
+		},
 		async update(mode, next, view) {
 			if (view) {
 				current = view;

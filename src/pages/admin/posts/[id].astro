@@ -65,7 +65,12 @@ const editorData = {
 		label: `Photo ${index + 1} · ${formatTakenAt(photo.taken_at)}`,
 		thumbUrl: `/api/admin/media/${photo.r2_key_thumb}`,
 		caption: photo.caption,
+		alt: photo.alt,
 	})),
+	// The map block's preview, at the same settings as the preview in the details.
+	mapView: mapPreview,
+	mapMode: post.map_mode,
+	mapStyle: post.map_style,
 };
 // Embedded as JSON in a <script> tag; escaping "<" keeps text in a post from closing the script tag early.
 const editorJson = JSON.stringify(editorData).replace(/</g, '\\u003c');
@@ -162,7 +167,7 @@ function jobText(): string {
 					)
 				}
 				<div class="span-4">
-					<label for="author_notes">Notes</label>
+					<label for="author_notes">Notes (used for generating the post)</label>
 					<textarea class="text-guide" id="author_notes" name="author_notes" maxlength="20000" placeholder="What happened? Rough notes are fine: places, who you were with, funny moments, what you ate. The AI will write the post from these and the photos.">{post.author_notes}</textarea>
 				</div>
 			</div>
@@ -186,12 +191,7 @@ function jobText(): string {
 						<li class="photo-card" data-photo-id={photo.id}>
 							<img src={`/api/admin/media/${photo.r2_key_thumb}`} alt="" loading="lazy" />
 							<p class="taken">{formatTakenAt(photo.taken_at)}</p>
-							<input class="photo-text text-guide" data-field="note" type="text" maxlength="500" value={photo.note} placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
-							<details class="caption-fields">
-								<summary>Caption and alt text</summary>
-								<input class="photo-text text-public" data-field="caption" type="text" maxlength="500" value={photo.caption} placeholder="Caption shown under the photo" aria-label="Caption" />
-								<input class="photo-text text-public" data-field="alt" type="text" maxlength="500" value={photo.alt} placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
-							</details>
+							<input class="photo-text text-guide" data-field="note" type="text" maxlength="500" value={photo.note} placeholder="Notes on this photo (optional)" aria-label="Notes on this photo" />
 							<div class="card-actions">
 								<span class="card-status" role="status" />
 								<button class="cover" type="button" data-cover={String(photo.id === post.cover_photo_id)}>{photo.id === post.cover_photo_id ? 'Cover photo' : 'Make cover'}</button>
@@ -205,12 +205,7 @@ function jobText(): string {
 				<li class="photo-card">
 					<img alt="" />
 					<p class="taken"></p>
-					<input class="photo-text text-guide" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's this?" aria-label="Note about this photo" />
-					<details class="caption-fields">
-						<summary>Caption and alt text</summary>
-						<input class="photo-text text-public" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the photo" aria-label="Caption" />
-						<input class="photo-text text-public" data-field="alt" type="text" maxlength="500" placeholder="Alt text: describe the photo for screen readers" aria-label="Alt text" />
-					</details>
+					<input class="photo-text text-guide" data-field="note" type="text" maxlength="500" placeholder="Notes on this photo (optional)" aria-label="Notes on this photo" />
 					<div class="card-actions">
 						<span class="card-status" role="status"></span>
 						<button class="cover" type="button" data-cover="false">Make cover</button>
@@ -228,8 +223,7 @@ function jobText(): string {
 							<div class="video-body">
 								<p class="video-name">{video.file_name || 'Untitled video'} <span class="video-duration">{formatDuration(video.duration)}</span></p>
 								<p class:list={['video-state', (video.status === 'error' || video.status === 'uploading') && 'status-error']}>{video.status === 'error' && video.error ? `${videoStatusText.error} ${video.error}` : videoStatusText[video.status]}</p>
-								<input class="video-text text-guide" data-field="note" type="text" maxlength="500" value={video.note} placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
-								<input class="video-text text-public" data-field="caption" type="text" maxlength="500" value={video.caption} placeholder="Caption shown under the video" aria-label="Caption" />
+								<input class="video-text text-guide" data-field="note" type="text" maxlength="500" value={video.note} placeholder="Notes on this video (optional)" aria-label="Notes on this video" />
 								<div class="card-actions">
 									<span class="card-status" role="status" />
 									<button class="delete" type="button">Delete</button>
@@ -245,8 +239,7 @@ function jobText(): string {
 					<div class="video-body">
 						<p class="video-name"><span class="name"></span> <span class="video-duration"></span></p>
 						<p class="video-state">Starting upload…</p>
-						<input class="video-text text-guide" data-field="note" type="text" maxlength="500" placeholder="Note (optional): what's happening?" aria-label="Note about this video" />
-						<input class="video-text text-public" data-field="caption" type="text" maxlength="500" placeholder="Caption shown under the video" aria-label="Caption" />
+						<input class="video-text text-guide" data-field="note" type="text" maxlength="500" placeholder="Notes on this video (optional)" aria-label="Notes on this video" />
 						<div class="card-actions">
 							<span class="card-status" role="status"></span>
 							<button class="delete" type="button">Delete</button>
@@ -299,10 +292,11 @@ function jobText(): string {
 	import { tripDateRange } from '../../../lib/photo-meta';
 	import type { Block } from '../../../lib/blocks';
 	import { preparePhoto, runWithLimit, uploadPhoto, type UploadedPhoto } from '../../../scripts/admin-upload';
-	import { BlockEditor, type CaptionTarget, type EditorPhoto, type EditorVideo } from '../../../scripts/block-editor';
+	import { BlockEditor, type EditorPhoto, type EditorVideo, type MediaTextTarget } from '../../../scripts/block-editor';
+	import type { TripMap } from '../../../scripts/trip-map';
 	import { uploadVideo, type VideoState } from '../../../scripts/video-upload';
 	import { formatDuration } from '../../../lib/format';
-	import { mapSourceHint, type MapView } from '../../../lib/map';
+	import { mapSourceHint, type MapMode, type MapStyle, type MapView } from '../../../lib/map';
 	import { thumbnailUrl } from '../../../lib/stream';
 
 	const workspace = document.querySelector<HTMLElement>('.workspace')!;
@@ -366,6 +360,8 @@ function jobText(): string {
 	// ---- Map pin and preview ----
 
 	type Place = { name: string; source: string; lat: number | null; lon: number | null };
+	/** Sent on the document when the map settings or the pin change; `view` is set when the pin moved. */
+	type MapSettingsChange = { view?: MapView };
 	type PlaceUpdate = { place?: Place; view?: MapView | null };
 	const pinInput = document.getElementById('map_pin') as HTMLInputElement;
 	const pinReason = document.querySelector<HTMLElement>('[data-pin-reason]')!;
@@ -384,6 +380,7 @@ function jobText(): string {
 		if (place.source) sourceLink.href = place.source;
 		document.querySelector<HTMLElement>('[data-pin-unverified]')!.hidden = !place.source || verified !== false;
 		if (!view) return;
+		document.dispatchEvent(new CustomEvent<MapSettingsChange>('map-settings', { detail: { view } }));
 		if (!mapFigure) {
 			location.reload();
 			return;
@@ -425,6 +422,8 @@ function jobText(): string {
 	const styleSelect = document.getElementById('map_style') as Select;
 	function updateMapPreview() {
 		mapFigure?.dispatchEvent(new CustomEvent('trip-map:update', { detail: { mode: modeSelect.value, style: styleSelect.value } }));
+		// The map block in the post editor follows the same settings.
+		document.dispatchEvent(new CustomEvent<MapSettingsChange>('map-settings', { detail: {} }));
 	}
 	modeSelect.addEventListener('change', updateMapPreview);
 	styleSelect.addEventListener('change', updateMapPreview);
@@ -455,6 +454,7 @@ function jobText(): string {
 			label: `Photo ${grid.children.length} · ${formatTakenAt(photo.taken_at)}`,
 			thumbUrl: `/api/admin/media/${photo.r2_key_thumb}`,
 			caption: '',
+			alt: '',
 		});
 	}
 
@@ -463,11 +463,9 @@ function jobText(): string {
 		if (!input.classList.contains('photo-text')) return;
 		const card = input.closest<HTMLElement>('.photo-card')!;
 		const status = card.querySelector<HTMLElement>('.card-status')!;
-		const field = input.dataset.field!;
 		try {
-			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'PATCH', { [field]: input.value });
-			if (field === 'caption') editor?.setCaption({ kind: 'photo', id: card.dataset.photoId! }, input.value.trim());
-			setStatus(status, `${field === 'alt' ? 'Alt text' : field[0].toUpperCase() + field.slice(1)} saved`, true);
+			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'PATCH', { note: input.value });
+			setStatus(status, 'Note saved', true);
 		} catch (error) {
 			setStatus(status, (error as Error).message, false);
 		}
@@ -575,6 +573,7 @@ function jobText(): string {
 		photos: EditorPhoto[];
 		videos: EditorVideo[];
 		processingVideoIds: string[];
+		mapView: MapView | null;
 	}
 
 	const data = JSON.parse(document.getElementById('editor-data')!.textContent!) as EditorData;
@@ -595,15 +594,59 @@ function jobText(): string {
 		postStatus.className = 'post-status';
 	}
 
-	// A caption edited in the post editor saves right away and updates the matching photo or video card.
-	async function saveCaption(target: CaptionTarget, caption: string) {
-		await sendJson(`/api/admin/${target.kind}s/${target.id}`, 'PATCH', { caption });
-		const input = document.querySelector<HTMLInputElement>(`[data-${target.kind}-id="${target.id}"] [data-field="caption"]`);
-		if (input) input.value = caption;
+	// A caption or alt text edited in the post editor saves right away.
+	async function saveMediaText(target: MediaTextTarget, value: string) {
+		await sendJson(`/api/admin/${target.kind}s/${target.id}`, 'PATCH', { [target.field]: value });
 	}
 
+	// The map block's live preview. MapLibre is loaded the first time the block is
+	// on the page; after that the same map is moved into each re-render of the
+	// editor and follows the map settings in the details.
+	const editorMapCanvas = document.createElement('div');
+	editorMapCanvas.className = 'trip-map-canvas editor-map';
+	const editorMapMessage = document.createElement('p');
+	editorMapMessage.className = 'hint';
+	const editorMapWrap = document.createElement('div');
+	editorMapWrap.appendChild(editorMapCanvas);
+	editorMapWrap.appendChild(editorMapMessage);
+	let editorMapView = data.mapView;
+	let editorMap: Promise<TripMap> | null = null;
+
+	function refreshEditorMap(movedTo?: MapView) {
+		if (movedTo) editorMapView = movedTo;
+		if (!editorMapWrap.isConnected) return;
+		const mode = modeSelect.value as MapMode;
+		const style = styleSelect.value as MapStyle;
+		const message = !editorMapView
+			? 'No place for the map yet. Use Find the place in the post details.'
+			: mode === 'off'
+				? 'The map is hidden: Map zoom is set to No map.'
+				: '';
+		editorMapMessage.textContent = message;
+		editorMapMessage.hidden = !message;
+		editorMapCanvas.hidden = Boolean(message);
+		if (message || !editorMapView || mode === 'off') return;
+		const view = editorMapView;
+		if (!editorMap) {
+			editorMap = import('../../../scripts/trip-map').then(({ drawTripMap }) => drawTripMap(editorMapCanvas, { ...view, mode }, style));
+		} else {
+			editorMap.then((map) => {
+				map.resize();
+				return map.update(mode, style, movedTo);
+			});
+		}
+		editorMap.catch((error: unknown) => {
+			editorMapMessage.textContent = `The map could not be loaded: ${(error as Error).message}`;
+			editorMapMessage.hidden = false;
+		});
+	}
+	document.addEventListener('map-settings', (event) => refreshEditorMap((event as CustomEvent<MapSettingsChange>).detail.view));
+
 	const editor: BlockEditor | null = data.editable
-		? new BlockEditor(document.querySelector<HTMLElement>('#block-editor')!, data.blocks, data.photos, data.videos, markDirty, saveCaption)
+		? new BlockEditor(document.querySelector<HTMLElement>('#block-editor')!, data.blocks, data.photos, data.videos, markDirty, saveMediaText, {
+				element: editorMapWrap,
+				shown: () => refreshEditorMap(),
+			})
 		: null;
 	summaryInput.addEventListener('input', markDirty);
 	window.addEventListener('beforeunload', (event) => {
@@ -754,8 +797,7 @@ function jobText(): string {
 			img.alt = '';
 			card.querySelector('.video-thumb')!.replaceWith(img);
 			const index = [...videoList.children].indexOf(card);
-			const caption = card.querySelector<HTMLInputElement>('[data-field="caption"]')!.value;
-			editor?.setVideo({ id: video.id, label: `Video ${index + 1} · ${video.file_name || 'untitled'}`, thumbUrl: thumb, caption });
+			editor?.setVideo({ id: video.id, label: `Video ${index + 1} · ${video.file_name || 'untitled'}`, thumbUrl: thumb });
 		}
 	}
 
@@ -785,7 +827,7 @@ function jobText(): string {
 			onCreated: (videoId) => {
 				card.dataset.videoId = videoId;
 				const index = [...videoList.children].indexOf(card);
-				editor?.setVideo({ id: videoId, label: `Video ${index + 1} · ${file.name}`, thumbUrl: null, caption: '' });
+				editor?.setVideo({ id: videoId, label: `Video ${index + 1} · ${file.name}`, thumbUrl: null });
 			},
 			onProgress: (fraction) => setStatus(state, `Uploading ${Math.round(fraction * 100)}%`, true),
 		})
@@ -803,9 +845,8 @@ function jobText(): string {
 		const status = card.querySelector<HTMLElement>('.card-status')!;
 		if (!card.dataset.videoId) return setStatus(status, 'Wait for the upload to start', false);
 		try {
-			await sendJson(`/api/admin/videos/${card.dataset.videoId}`, 'PATCH', { [input.dataset.field!]: input.value });
-			if (input.dataset.field === 'caption') editor?.setCaption({ kind: 'video', id: card.dataset.videoId }, input.value.trim());
-			setStatus(status, input.dataset.field === 'note' ? 'Note saved' : 'Caption saved', true);
+			await sendJson(`/api/admin/videos/${card.dataset.videoId}`, 'PATCH', { note: input.value });
+			setStatus(status, 'Note saved', true);
 		} catch (error) {
 			setStatus(status, (error as Error).message, false);
 		}
@@ -1066,22 +1107,6 @@ function jobText(): string {
 
 	/* ---- Photo card extras ---- */
 
-	.caption-fields {
-		margin-top: 0.4rem;
-		font-size: 0.8rem;
-		color: var(--muted);
-	}
-
-	.caption-fields summary {
-		cursor: pointer;
-	}
-
-	.caption-fields input {
-		margin-top: 0.35rem;
-		font-size: 0.85rem !important;
-		padding: 0.4rem 0.55rem !important;
-	}
-
 	.cover {
 		margin-left: auto;
 		border: none;
@@ -1249,6 +1274,20 @@ function jobText(): string {
 	#block-editor :global(.gallery-item) {
 		width: 12rem;
 		align-content: start;
+	}
+
+	#block-editor :global(.editor-map) {
+		height: 220px;
+		border-radius: 6px;
+		overflow: hidden;
+		background: #f6f1ea;
+	}
+
+	#block-editor :global(.caption-label) {
+		display: grid;
+		gap: 0.2rem;
+		margin: 0;
+		font-size: 0.75rem;
 	}
 
 	#block-editor :global(.caption-field) {
