@@ -58,3 +58,13 @@ export function parseBody(json: string, postPhotoIds: Iterable<string>, postVide
 	}
 	return body;
 }
+
+/**
+ * Splits off the photo or gallery that opens a post, which is shown right under
+ * the title and summary (above the map). Bodies that open with text have none.
+ */
+export function splitOpening(body: Block[]): { opening: Block[]; rest: Block[] } {
+	const first = body[0];
+	if (first && (first.type === 'photo' || first.type === 'gallery')) return { opening: [first], rest: body.slice(1) };
+	return { opening: [], rest: body };
+}

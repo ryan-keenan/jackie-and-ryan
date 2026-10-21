@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBody, referencedPhotoIds, type Block } from './blocks';
+import { parseBody, referencedPhotoIds, splitOpening, type Block } from './blocks';
 
 const body: Block[] = [
 	{ type: 'paragraph', markdown: 'Hello' },
@@ -38,5 +38,18 @@ describe('parseBody', () => {
 describe('referencedPhotoIds', () => {
 	it('lists each photo once, in order of first appearance', () => {
 		expect(referencedPhotoIds(body)).toEqual(['a', 'b', 'c']);
+	});
+});
+
+describe('splitOpening', () => {
+	it('splits off a photo or gallery that opens the post', () => {
+		const [photo, gallery, ...more] = body.slice(1);
+		expect(splitOpening([photo, ...more])).toEqual({ opening: [photo], rest: more });
+		expect(splitOpening([gallery, ...more])).toEqual({ opening: [gallery], rest: more });
+	});
+
+	it('has no opening when the post starts with text', () => {
+		expect(splitOpening(body)).toEqual({ opening: [], rest: body });
+		expect(splitOpening([])).toEqual({ opening: [], rest: [] });
 	});
 });

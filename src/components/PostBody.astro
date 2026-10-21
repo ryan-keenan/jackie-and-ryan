@@ -12,9 +12,12 @@ interface Props {
 	videos?: VideoRow[];
 	/** Where images are served from: the public route, or the admin route for previews of drafts. */
 	mediaBase?: '/media/' | '/api/admin/media/';
+	/** The photo or gallery that opens the post, shown right under the title: load it immediately rather than lazily. */
+	opening?: boolean;
 }
 
-const { blocks, photos, videos = [], mediaBase = '/media/' } = Astro.props;
+const { blocks, photos, videos = [], mediaBase = '/media/', opening = false } = Astro.props;
+const loading = opening ? 'eager' : 'lazy';
 const mediaUrl = (key: string) => `${mediaBase}${key}`;
 const photosById = new Map(photos.map((photo) => [photo.id, photo]));
 const photo = (id: string) => photosById.get(id)!;
@@ -42,7 +45,7 @@ const video = (id: string) => videosById.get(id)!;
 					return (
 						<figure class="wide">
 							<a href={mediaUrl(p.r2_key_display)} data-lightbox-src={mediaUrl(p.r2_key_display)} data-lightbox-caption={p.caption}>
-								<img src={mediaUrl(p.r2_key_display)} alt={p.alt} width={p.width} height={p.height} loading="lazy" decoding="async" />
+								<img src={mediaUrl(p.r2_key_display)} alt={p.alt} width={p.width} height={p.height} loading={loading} decoding="async" />
 							</a>
 							{p.caption && <figcaption>{p.caption}</figcaption>}
 						</figure>
@@ -78,7 +81,7 @@ const video = (id: string) => videosById.get(id)!;
 								return (
 									<figure class="gallery-item">
 										<a href={mediaUrl(p.r2_key_display)} data-lightbox-src={mediaUrl(p.r2_key_display)} data-lightbox-caption={p.caption}>
-											<img src={mediaUrl(p.r2_key_thumb)} alt={p.alt} loading="lazy" decoding="async" />
+											<img src={mediaUrl(p.r2_key_thumb)} alt={p.alt} loading={loading} decoding="async" />
 										</a>
 										{p.caption && <figcaption>{p.caption}</figcaption>}
 									</figure>
