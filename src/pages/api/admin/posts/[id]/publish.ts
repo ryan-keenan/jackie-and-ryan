@@ -3,18 +3,25 @@ import { z } from 'astro/zod';
 import { parseBody, referencedVideoIds } from '../../../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin, getVideosForPost, setPublished } from '../../../../../lib/db';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../../lib/http';
+import { buildSnapshot } from '../../../../../lib/snapshot';
 
 const publishSchema = z.object({ published: z.boolean() }).strict();
 
-/** Publishes or unpublishes a post. Publishing requires a body that renders. */
+/**
+ * Publishes or unpublishes a post. Publishing requires a body that renders, and
+ * stores a copy of the post as it is now for the live site (src/lib/snapshot.ts);
+ * publishing an already-published post replaces that copy with the current edits.
+ */
 export const POST: APIRoute = ({ params, request }) =>
 	handle(async () => {
 		const { published } = parseWith(publishSchema, await readJson(request));
 		const post = await getPostForAdmin(params.id!);
 		if (!post) throw new BadRequest('Post not found', 404);
 
+		let snapshot: string | null = null;
 		if (published) {
-			const photoIds = (await getPhotosForAdmin(post.id)).map((photo) => photo.id);
+			const photos = await getPhotosForAdmin(post.id);
+			const photoIds = photos.map((photo) => photo.id);
 			const videos = await getVideosForPost(post.id);
 			let blocks;
 			try {
@@ -30,8 +37,9 @@ export const POST: APIRoute = ({ params, request }) =>
 					`${notReady.length} video(s) in the post aren't ready to play yet. Wait for processing to finish, or remove them.`,
 				);
 			}
+			snapshot = JSON.stringify(buildSnapshot(post, photos, videos));
 		}
 
-		await setPublished(post.id, published);
+		await setPublished(post.id, snapshot);
 		return json({ ok: true, status: published ? 'published' : 'draft' });
 	});

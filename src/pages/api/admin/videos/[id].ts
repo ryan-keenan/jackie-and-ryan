@@ -12,6 +12,7 @@ import {
 	updateVideoText,
 } from '../../../../lib/db';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
+import { publishedMediaIds } from '../../../../lib/snapshot';
 import { deleteStreamVideo, getVideoStatus, readStreamConfig } from '../../../../lib/stream';
 
 function streamConfig() {
@@ -77,6 +78,10 @@ export const DELETE: APIRoute = ({ params }) =>
 		const videoIds = (await getVideosForPost(video.post_id)).map((v) => v.id);
 		if (referencedVideoIds(parseBody(post!.body, photoIds, videoIds)).includes(video.id)) {
 			throw new BadRequest('This video is used in the post. Remove it from the post before deleting it.', 409);
+		}
+		// The live site shows the published copy, which can still use a video the edits have dropped.
+		if (publishedMediaIds(post!).videos.includes(video.id)) {
+			throw new BadRequest('The published post still shows this video. Publish your changes first, then delete it.', 409);
 		}
 
 		await deleteStreamVideo(streamConfig(), video.stream_uid);

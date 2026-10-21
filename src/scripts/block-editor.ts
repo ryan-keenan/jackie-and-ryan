@@ -1,11 +1,12 @@
 import type { Block } from '../lib/blocks';
+import { autosave } from './autosave';
 
 // Editor for a post body: a list of blocks that can be edited, reordered,
 // removed and added. It renders into `root` and reports every change through
-// onChange; saving is up to the page. Photo captions and alt text, and video
-// captions, are edited under each photo or video here (the only place they are
-// edited), but they belong to the photo or video rather than the body, so they
-// are saved on their own through onMediaText. The map block shows a live map
+// onChange; saving the body is up to the page. Photo captions and alt text, and
+// video captions, are edited under each photo or video here (the only place they
+// are edited), but they belong to the photo or video rather than the body, so
+// they save on their own as you type, through onMediaText. The map block shows a live map
 // the page supplies.
 
 export interface EditorPhoto {
@@ -131,7 +132,7 @@ export class BlockEditor {
 			: el('div', { className: 'block-thumb video-processing', textContent: 'Processing…' });
 	}
 
-	/** A labeled caption or alt text box that saves when it loses focus, with a status line under it. */
+	/** A labeled caption or alt text box that saves as you type, with a status line under it. */
 	private mediaTextField(target: MediaTextTarget): HTMLElement {
 		const item = target.kind === 'photo' ? this.photosById.get(target.id) : this.videosById.get(target.id);
 		const isAlt = target.field === 'alt';
@@ -146,20 +147,14 @@ export class BlockEditor {
 		});
 		const status = el('span', { className: 'caption-status' });
 		status.setAttribute('role', 'status');
-		input.addEventListener('change', async () => {
+		const saver = autosave(async () => {
 			const value = input.value.trim();
-			status.textContent = 'Saving…';
-			status.classList.remove('status-error');
-			try {
-				await this.onMediaText(target, value);
-				if (item && isAlt) (item as EditorPhoto).alt = value;
-				else if (item) item.caption = value;
-				status.textContent = `${name} saved`;
-			} catch (error) {
-				status.textContent = (error as Error).message;
-				status.classList.add('status-error');
-			}
-		});
+			await this.onMediaText(target, value);
+			// The same photo can appear twice (a photo block and a gallery); keep the shared copy current for re-renders.
+			if (item && isAlt) (item as EditorPhoto).alt = value;
+			else if (item) item.caption = value;
+		}, status, { affectsPost: true });
+		input.addEventListener('input', () => saver.schedule());
 		const label = el('label', { className: 'caption-label' }, name, input);
 		return el('div', { className: 'caption-field' }, label, status);
 	}

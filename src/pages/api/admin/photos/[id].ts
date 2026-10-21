@@ -4,6 +4,7 @@ import { env } from 'cloudflare:workers';
 import { parseBody, referencedPhotoIds } from '../../../../lib/blocks';
 import { deletePhotoRow, getPhotoForAdmin, getPhotosForAdmin, getPostForAdmin, getVideosForPost, updatePhotoText } from '../../../../lib/db';
 import { BadRequest, handle, json, parseWith, readJson } from '../../../../lib/http';
+import { publishedMediaIds } from '../../../../lib/snapshot';
 
 const textSchema = z
 	.object({
@@ -34,6 +35,10 @@ export const DELETE: APIRoute = ({ params }) =>
 		const body = parseBody(post!.body, photos.map((p) => p.id), videos.map((v) => v.id));
 		if (referencedPhotoIds(body).includes(photo.id)) {
 			throw new BadRequest('This photo is used in the post. Remove it from the post before deleting it.', 409);
+		}
+		// The live site shows the published copy, which can still use a photo the edits have dropped.
+		if (publishedMediaIds(post!).photos.includes(photo.id)) {
+			throw new BadRequest('The published post still shows this photo. Publish your changes first, then delete it.', 409);
 		}
 
 		await deletePhotoRow(photo);

@@ -6,17 +6,23 @@ import { parseBody } from '../../lib/blocks';
 import { getPhotosForPost, getPublishedPost, getVideosForPost } from '../../lib/db';
 import { formatTripDates } from '../../lib/format';
 import { mapView, pinLabel } from '../../lib/map';
+import { applySnapshot, parseSnapshot } from '../../lib/snapshot';
 
-const post = await getPublishedPost(Astro.params.slug!, 'public');
-if (!post) return new Response('Not found', { status: 404 });
+const row = await getPublishedPost(Astro.params.slug!, 'public');
+if (!row) return new Response('Not found', { status: 404 });
 
-const photos = await getPhotosForPost(post.id);
-const videos = await getVideosForPost(post.id);
+// Readers see the published copy; edits made since show only after publishing again.
+const { post, photos, videos } = applySnapshot(
+	parseSnapshot(row.published_snapshot),
+	row,
+	await getPhotosForPost(row.id),
+	await getVideosForPost(row.id),
+);
 const blocks = parseBody(post.body, photos.map((photo) => photo.id), videos.map((video) => video.id));
 const dates = formatTripDates(post.trip_start, post.trip_end);
 const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.place_lon, label: pinLabel(post.map_pin, post.location) });
 
-// Browsers re-check every visit, so edits and unpublishing show up immediately.
+// Browsers re-check every visit, so publishing and unpublishing show up immediately.
 Astro.response.headers.set('cache-control', 'no-cache');
 ---
 

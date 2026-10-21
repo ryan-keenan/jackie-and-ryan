@@ -20,7 +20,7 @@ const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.plac
 
 <Base title={`Preview: ${post.title}`} description={post.summary}>
 	<p class="preview-banner">
-		Preview of the last saved version{post.status === 'draft' ? ' (not published yet)' : ''}.
+		Preview of your current edits{post.status === 'draft' ? ' (not published yet)' : ' (readers see the last published version)'}.
 		<a href={`/admin/posts/${post.id}`}>Back to editing</a>
 	</p>
 	<main>

@@ -8,6 +8,7 @@ import { locatedCount, MAP_MODE_LABELS, MAP_MODES, MAP_STYLE_LABELS, MAP_STYLES,
 import TripMap from '../../../components/TripMap.astro';
 import ResearchPanel from '../../../components/ResearchPanel.astro';
 import { parseResearch, type Research } from '../../../lib/research';
+import { postHasUnpublishedEdits } from '../../../lib/post-edits';
 
 const post = await getPostForAdmin(Astro.params.id!);
 if (!post) return new Response('Not found', { status: 404 });
@@ -44,6 +45,9 @@ try {
 } catch (error) {
 	bodyError = (error as Error).message;
 }
+
+// On a published post, whether the edits (which save as they're typed) differ from what readers see.
+const unpublishedEdits = postHasUnpublishedEdits(post, photos, videos);
 
 const editorData = {
 	postId: post.id,
@@ -157,7 +161,7 @@ function jobText(): string {
 						</select>
 						<button type="button" class="button secondary" data-style-step="1" aria-label="Next map style">›</button>
 					</div>
-					<p class="field-hint">The preview below changes as you pick; Save details to keep it.</p>
+					<p class="field-hint">The preview below changes as you pick.</p>
 				</div>
 				{
 					mapPreview && (
@@ -171,10 +175,9 @@ function jobText(): string {
 					<textarea class="text-guide" id="author_notes" name="author_notes" maxlength="20000" placeholder="What happened? Rough notes are fine: places, who you were with, funny moments, what you ate. The AI will write the post from these and the photos.">{post.author_notes}</textarea>
 				</div>
 			</div>
-			<div class="actions">
-				<button class="button" type="submit">Save details</button>
-				<span class="save-status" role="status" aria-live="polite"></span>
-			</div>
+			<p class="actions">
+				Details save as you type. <span class="save-status" role="status" aria-live="polite"></span>
+			</p>
 		</form>
 
 		<section class="photos">
@@ -255,7 +258,8 @@ function jobText(): string {
 			<h2>The post</h2>
 			<p class="hint">
 				When the details and photos are ready, generate a draft. You can edit it below, preview it, and publish when you're
-				happy. Generating again replaces the current text.
+				happy. Edits save as you type, and on a published post they show on the site right away. Generating again replaces
+				the current text.
 			</p>
 			<div class="draft-bar">
 				<button class="button" type="button" id="generate">{blocks.length ? 'Regenerate draft' : 'Generate draft'}</button>
@@ -272,9 +276,19 @@ function jobText(): string {
 			</div>
 
 			<div class="publish-bar">
-				<button class="button secondary" type="button" id="save-post" disabled>Save post</button>
 				<a class="button secondary" href={`/admin/posts/${post.id}/preview`} target="_blank" id="preview-link" hidden={blocks.length === 0}>Preview</a>
-				<button class="button" type="button" id="publish" data-published={String(post.status === 'published')} hidden={blocks.length === 0}>{post.status === 'published' ? 'Unpublish' : 'Publish'}</button>
+				{
+					post.status === 'published' ? (
+						<>
+							<button class="button publish-changes" type="button" id="publish" data-action="publish" hidden={!unpublishedEdits}>Publish changes</button>
+							<button class="button secondary" type="button" id="unpublish" data-action="unpublish">Unpublish</button>
+							<span class="edits-note" hidden={!unpublishedEdits}>Unpublished edits: the live post shows the last published version.</span>
+							<span class="live-note" hidden={unpublishedEdits}>Published. The live post is up to date.</span>
+						</>
+					) : (
+						<button class="button" type="button" id="publish" data-action="publish" hidden={blocks.length === 0}>Publish</button>
+					)
+				}
 				<span class="post-status" role="status" aria-live="polite"></span>
 			</div>
 			{
@@ -294,6 +308,7 @@ function jobText(): string {
 	import { preparePhoto, runWithLimit, uploadPhoto, type UploadedPhoto } from '../../../scripts/admin-upload';
 	import { BlockEditor, type EditorPhoto, type EditorVideo, type MediaTextTarget } from '../../../scripts/block-editor';
 	import type { TripMap } from '../../../scripts/trip-map';
+	import { autosave, flushAll } from '../../../scripts/autosave';
 	import { uploadVideo, type VideoState } from '../../../scripts/video-upload';
 	import { formatDuration } from '../../../lib/format';
 	import { mapSourceHint, type MapMode, type MapStyle, type MapView } from '../../../lib/map';
@@ -342,19 +357,40 @@ function jobText(): string {
 		};
 	}
 
-	form.addEventListener('submit', async (event) => {
-		event.preventDefault();
-		const details = detailsFromForm();
-		setStatus(saveStatus, 'Saving…', true);
-		try {
-			const result = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', details)) as PlaceUpdate;
-			document.querySelector('[data-title-display]')!.textContent = details.title;
-			// A post without a map pin follows its Location, which was looked up again.
-			if (result.place) showPlace(result.place, null, result.view ?? null);
-			setStatus(saveStatus, 'Saved', true);
-		} catch (error) {
-			setStatus(saveStatus, (error as Error).message, false);
-		}
+	// Details save as you type. The Location is saved only when you leave the box,
+	// because saving a Location can look it up on the map, which half-typed text
+	// would get wrong.
+	let savedLocation = (form.elements.namedItem('location') as HTMLInputElement).value.trim();
+	const detailsSaver = autosave(async () => {
+		const { location: _typing, author_notes: _notes, ...details } = detailsFromForm();
+		await sendJson(`/api/admin/posts/${postId}`, 'PATCH', { ...details, location: savedLocation });
+		document.querySelector('[data-title-display]')!.textContent = details.title;
+	}, saveStatus, { affectsPost: true });
+	// The notes only guide the AI, so they're saved on their own.
+	const notesSaver = autosave(async () => {
+		await sendJson(`/api/admin/posts/${postId}`, 'PATCH', { author_notes: detailsFromForm().author_notes });
+	}, saveStatus, { affectsPost: false });
+	const locationSaver = autosave(async () => {
+		const location = (form.elements.namedItem('location') as HTMLInputElement).value.trim();
+		const result = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', { location })) as PlaceUpdate;
+		savedLocation = location;
+		// A post without a map pin follows its Location, which was looked up again.
+		if (result.place) showPlace(result.place, null, result.view ?? null);
+	}, saveStatus, { affectsPost: true });
+	form.addEventListener('submit', (event) => event.preventDefault());
+	form.addEventListener('input', (event) => {
+		const target = event.target as HTMLElement;
+		// The map pin box only feeds Find the place; it isn't a detail.
+		if (target.id === 'location' || target.id === 'map_pin') return;
+		if (target.id === 'author_notes') notesSaver.schedule();
+		else detailsSaver.schedule();
+	});
+	form.addEventListener('change', (event) => {
+		const target = event.target as HTMLElement;
+		if (target.id === 'map_pin') return;
+		if (target.id === 'location') locationSaver.schedule(0);
+		else if (target.id === 'author_notes') notesSaver.schedule(0);
+		else detailsSaver.schedule(0);
 	});
 
 	// ---- Map pin and preview ----
@@ -388,14 +424,14 @@ function jobText(): string {
 		mapFigure.dispatchEvent(new CustomEvent('trip-map:update', { detail: { mode: modeSelect.value, style: styleSelect.value, view } }));
 	}
 
-	// Saves the details first, so the AI reads the notes as they are on the page.
+	// Saves everything first, so the AI reads the post as it is on the page.
 	findButton.addEventListener('click', async () => {
 		const wanted = pinInput.value.trim();
 		findButton.disabled = true;
 		pinReason.hidden = false;
 		setStatus(pinReason, wanted ? `Searching the web for ${wanted}…` : 'Reading the post and searching the web for its place…', true);
 		try {
-			await sendJson(`/api/admin/posts/${postId}`, 'PATCH', detailsFromForm());
+			if (!(await flushAll())) throw new Error('Something on the page couldn\u2019t be saved; see the messages above.');
 			const found = (await sendJson(`/api/admin/posts/${postId}/place`, 'POST', { request: wanted })) as {
 				label: string;
 				confident: boolean;
@@ -407,6 +443,7 @@ function jobText(): string {
 			pinInput.value = found.label;
 			setStatus(pinReason, found.confident ? found.reason : `Not sure: ${found.reason} Check the pin, or type a more specific place.`, found.confident);
 			showPlace(found.place, found.sourceVerified, found.view);
+			document.dispatchEvent(new CustomEvent('post-edited'));
 		} catch (error) {
 			setStatus(pinReason, (error as Error).message, false);
 		} finally {
@@ -458,17 +495,26 @@ function jobText(): string {
 		});
 	}
 
-	grid.addEventListener('change', async (event) => {
+	// Notes save as you type, one saver per card.
+	const noteSavers = new WeakMap<HTMLElement, ReturnType<typeof autosave>>();
+	function noteSaver(card: HTMLElement, url: () => string | null): ReturnType<typeof autosave> {
+		let saver = noteSavers.get(card);
+		if (!saver) {
+			const input = card.querySelector<HTMLInputElement>('[data-field="note"]')!;
+			saver = autosave(async () => {
+				const target = url();
+				if (!target) throw new Error('Wait for the upload to start');
+				await sendJson(target, 'PATCH', { note: input.value });
+			}, card.querySelector<HTMLElement>('.card-status'), { affectsPost: false });
+			noteSavers.set(card, saver);
+		}
+		return saver;
+	}
+	grid.addEventListener('input', (event) => {
 		const input = event.target as HTMLInputElement;
 		if (!input.classList.contains('photo-text')) return;
 		const card = input.closest<HTMLElement>('.photo-card')!;
-		const status = card.querySelector<HTMLElement>('.card-status')!;
-		try {
-			await sendJson(`/api/admin/photos/${card.dataset.photoId}`, 'PATCH', { note: input.value });
-			setStatus(status, 'Note saved', true);
-		} catch (error) {
-			setStatus(status, (error as Error).message, false);
-		}
+		noteSaver(card, () => `/api/admin/photos/${card.dataset.photoId}`).schedule();
 	});
 
 	// Delete takes two clicks (no browser confirm dialog): the first arms the button.
@@ -579,20 +625,22 @@ function jobText(): string {
 	const data = JSON.parse(document.getElementById('editor-data')!.textContent!) as EditorData;
 	const generateButton = document.querySelector<HTMLButtonElement>('#generate')!;
 	const draftStatus = document.querySelector<HTMLElement>('.draft-status')!;
-	const saveButton = document.querySelector<HTMLButtonElement>('#save-post')!;
 	const publishButton = document.querySelector<HTMLButtonElement>('#publish')!;
 	const postStatus = document.querySelector<HTMLElement>('.post-status')!;
 	const summaryInput = document.querySelector<HTMLTextAreaElement>('#summary')!;
 
-	let dirty = false;
 	let coverPhotoId = data.coverPhotoId;
 
-	function markDirty() {
-		dirty = true;
-		saveButton.disabled = false;
-		postStatus.textContent = 'Unsaved changes';
-		postStatus.className = 'post-status';
-	}
+	// The post (body, summary and cover) saves as you edit it.
+	const postSaver = autosave(async () => {
+		if (!editor) return;
+		await sendJson(`/api/admin/posts/${postId}/content`, 'PUT', {
+			body: editor.getBlocks(),
+			summary: summaryInput.value,
+			cover_photo_id: coverPhotoId,
+		});
+	}, postStatus, { affectsPost: true });
+	const markDirty = () => postSaver.schedule();
 
 	// A caption or alt text edited in the post editor saves right away.
 	async function saveMediaText(target: MediaTextTarget, value: string) {
@@ -649,11 +697,7 @@ function jobText(): string {
 			})
 		: null;
 	summaryInput.addEventListener('input', markDirty);
-	window.addEventListener('beforeunload', (event) => {
-		if (dirty) event.preventDefault();
-	});
-
-	// The cover is saved with the post (Save post), like the rest of the editor.
+	// The cover is saved with the post body.
 	grid.addEventListener('click', (event) => {
 		const button = event.target as HTMLButtonElement;
 		if (!button.classList.contains('cover')) return;
@@ -663,40 +707,57 @@ function jobText(): string {
 			other.dataset.cover = String(isCover);
 			other.textContent = isCover ? 'Cover photo' : 'Make cover';
 		}
-		markDirty();
+		postSaver.schedule(0);
 	});
 
-	async function savePost(): Promise<boolean> {
-		if (!editor) return false;
-		saveButton.disabled = true;
-		setStatus(postStatus, 'Saving…', true);
-		try {
-			await sendJson(`/api/admin/posts/${postId}/content`, 'PUT', {
-				body: editor.getBlocks(),
-				summary: summaryInput.value,
-				cover_photo_id: coverPhotoId,
-			});
-			dirty = false;
-			setStatus(postStatus, 'Saved', true);
-			return true;
-		} catch (error) {
-			saveButton.disabled = false;
-			setStatus(postStatus, (error as Error).message, false);
-			return false;
+	// Preview and publish use the saved post, so anything waiting is saved first.
+	document.querySelector<HTMLAnchorElement>('#preview-link')!.addEventListener('click', async (event) => {
+		event.preventDefault();
+		const preview = window.open('', '_blank');
+		if (await flushAll()) {
+			if (preview) preview.location.href = (event.currentTarget as HTMLAnchorElement).href;
+		} else {
+			preview?.close();
 		}
+	});
+
+	// Publishing (or publishing changes) copies the saved post to the live site; see src/lib/snapshot.ts.
+	for (const button of document.querySelectorAll<HTMLButtonElement>('.publish-bar [data-action]')) {
+		button.addEventListener('click', async () => {
+			const publish = button.dataset.action === 'publish';
+			if (!(await flushAll())) {
+				setStatus(postStatus, 'Not done: something on the page couldn\u2019t be saved; see the messages above.', false);
+				return;
+			}
+			try {
+				await sendJson(`/api/admin/posts/${postId}/publish`, 'POST', { published: publish });
+				location.reload();
+			} catch (error) {
+				setStatus(postStatus, (error as Error).message, false);
+			}
+		});
 	}
-	saveButton.addEventListener('click', savePost);
 
-	publishButton.addEventListener('click', async () => {
-		const publish = publishButton.dataset.published !== 'true';
-		if (dirty && !(await savePost())) return;
-		try {
-			await sendJson(`/api/admin/posts/${postId}/publish`, 'POST', { published: publish });
-			location.reload();
-		} catch (error) {
-			setStatus(postStatus, (error as Error).message, false);
-		}
-	});
+	// On a published post, saves of what readers see may leave the live copy behind;
+	// ask the server after a pause whether it now differs, and light up Publish changes.
+	if (data.status === 'published') {
+		const editsNote = document.querySelector<HTMLElement>('.edits-note')!;
+		const liveNote = document.querySelector<HTMLElement>('.live-note')!;
+		let check: ReturnType<typeof setTimeout> | undefined;
+		document.addEventListener('post-edited', () => {
+			clearTimeout(check);
+			check = setTimeout(async () => {
+				try {
+					const { unpublishedEdits } = (await sendJson(`/api/admin/posts/${postId}/edits`, 'GET')) as { unpublishedEdits: boolean };
+					publishButton.hidden = !unpublishedEdits;
+					editsNote.hidden = !unpublishedEdits;
+					liveNote.hidden = unpublishedEdits;
+				} catch (error) {
+					setStatus(postStatus, `Couldn\u2019t check for unpublished edits: ${(error as Error).message}`, false);
+				}
+			}, 1000);
+		});
+	}
 
 	const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -712,7 +773,6 @@ function jobText(): string {
 			}
 			const job = (await response.json()) as { status: string; error: string | null };
 			if (job.status === 'succeeded') {
-				dirty = false;
 				location.reload();
 				return;
 			}
@@ -741,6 +801,8 @@ function jobText(): string {
 		generateButton.textContent = hasText ? 'Regenerate draft' : 'Generate draft';
 		generateButton.disabled = true;
 		try {
+			// The draft is written from the saved notes, so save everything first.
+			if (!(await flushAll())) throw new Error('Something on the page couldn\u2019t be saved; see the messages above.');
 			const response = await fetch(`/api/admin/posts/${postId}/draft`, { method: 'POST' });
 			const body = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
 			if (!response.ok || !body.id) throw new Error(body.error ?? `Could not start the draft (HTTP ${response.status})`);
@@ -838,18 +900,11 @@ function jobText(): string {
 			.catch((error: Error) => setStatus(state, `Upload failed: ${error.message}`, false));
 	}
 
-	videoList.addEventListener('change', async (event) => {
+	videoList.addEventListener('input', (event) => {
 		const input = event.target as HTMLInputElement;
 		if (!input.classList.contains('video-text')) return;
 		const card = input.closest<HTMLElement>('.video-card')!;
-		const status = card.querySelector<HTMLElement>('.card-status')!;
-		if (!card.dataset.videoId) return setStatus(status, 'Wait for the upload to start', false);
-		try {
-			await sendJson(`/api/admin/videos/${card.dataset.videoId}`, 'PATCH', { note: input.value });
-			setStatus(status, 'Note saved', true);
-		} catch (error) {
-			setStatus(status, (error as Error).message, false);
-		}
+		noteSaver(card, () => (card.dataset.videoId ? `/api/admin/videos/${card.dataset.videoId}` : null)).schedule();
 	});
 
 	// Two clicks to delete, as with photos.
@@ -1148,8 +1203,24 @@ function jobText(): string {
 	}
 
 	.draft-status,
-	.post-status {
+	.post-status,
+	.edits-note,
+	.live-note {
 		font-size: 0.9rem;
+	}
+
+	/* Lit up while a published post has edits readers don't see yet. */
+	.publish-changes {
+		background: #2f7d4f;
+	}
+
+	.edits-note {
+		color: #2f7d4f;
+		font-weight: 500;
+	}
+
+	.live-note {
+		color: var(--muted);
 	}
 
 	.editor {

@@ -23,6 +23,8 @@ export interface PostRow {
 	place_name: string;
 	/** The web page the pin's coordinates came from; empty when they came from an OpenStreetMap lookup. */
 	place_source: string;
+	/** The published copy readers see (src/lib/snapshot.ts); null until first published. */
+	published_snapshot: string | null;
 	/** JSON research notes (src/lib/research.ts), or null if never researched. */
 	research: string | null;
 	published_at: string | null;
@@ -50,14 +52,21 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, map_pin, place_lat, place_lon, place_name, place_source, research, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, map_pin, place_lat, place_lon, place_name, place_source, published_snapshot, research, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
+	// Cards show the published copy (src/lib/snapshot.ts), not edits made since.
 	const { results } = await env.DB.prepare(
-		`SELECT p.id, p.slug, p.title, p.summary, p.trip_start, p.trip_end, p.location, p.published_at,
-		        c.r2_key_thumb AS cover_thumb_key, c.alt AS cover_alt
+		`SELECT p.id, p.slug, p.published_at,
+		        json_extract(p.published_snapshot, '$.title') AS title,
+		        json_extract(p.published_snapshot, '$.summary') AS summary,
+		        json_extract(p.published_snapshot, '$.trip_start') AS trip_start,
+		        json_extract(p.published_snapshot, '$.trip_end') AS trip_end,
+		        json_extract(p.published_snapshot, '$.location') AS location,
+		        c.r2_key_thumb AS cover_thumb_key,
+		        json_extract(p.published_snapshot, '$.photos."' || c.id || '".alt') AS cover_alt
 		   FROM posts p
-		   LEFT JOIN photos c ON c.id = p.cover_photo_id AND c.post_id = p.id
+		   LEFT JOIN photos c ON c.id = json_extract(p.published_snapshot, '$.cover_photo_id') AND c.post_id = p.id
 		  WHERE p.status = 'published' AND p.visibility = ?
 		  ORDER BY p.published_at DESC`,
 	)
@@ -414,13 +423,17 @@ export async function updatePostContent(
 }
 
 /** Publishes (keeping the first publish date on re-publish) or returns a post to draft. */
-export async function setPublished(id: string, published: boolean): Promise<boolean> {
+/**
+ * Publishes a post with `snapshot` (src/lib/snapshot.ts) as the copy readers see,
+ * or unpublishes it (null). Publishing again replaces the copy.
+ */
+export async function setPublished(id: string, snapshot: string | null): Promise<boolean> {
 	const now = new Date().toISOString();
-	const result = published
+	const result = snapshot
 		? await env.DB.prepare(
-				`UPDATE posts SET status = 'published', published_at = COALESCE(published_at, ?), updated_at = ? WHERE id = ?`,
+				`UPDATE posts SET status = 'published', published_snapshot = ?, published_at = COALESCE(published_at, ?), updated_at = ? WHERE id = ?`,
 			)
-				.bind(now, now, id)
+				.bind(snapshot, now, now, id)
 				.run()
 		: await env.DB.prepare(`UPDATE posts SET status = 'draft', updated_at = ? WHERE id = ?`).bind(now, id).run();
 	return result.meta.changes > 0;

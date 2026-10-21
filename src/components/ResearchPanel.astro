@@ -36,7 +36,7 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 	<p class="hint">
 		Optional. Looks up public information about the place and the activity: its history, what it's famous for, why it's worth the
 		trip. The draft tells it as part of your story. Check anything surprising against its source, and edit or remove what's wrong or
-		off-topic; the draft uses only what's left. Researching again replaces these notes.
+		off-topic; the draft uses only what's left. Edits save as you type. Researching again replaces these notes.
 	</p>
 	<div class="research-bar">
 		<label class="visually-hidden" for="research-provider">Research with</label>
@@ -78,7 +78,6 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 					))}
 				</ol>
 				<div class="research-bar">
-					<button class="button" type="button" id="research-save" disabled>Save research</button>
 					<button class="button secondary" type="button" id="research-clear">Remove all research</button>
 					<span class="research-save-status" role="status" aria-live="polite"></span>
 				</div>
@@ -98,15 +97,15 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 </section>
 
 <script>
+	import { autosave, flushAll } from '../scripts/autosave';
+
 	const section = document.querySelector<HTMLElement>('section.research')!;
 	const postId = section.dataset.postId!;
 	const runButton = document.querySelector<HTMLButtonElement>('#research-run')!;
 	const provider = document.getElementById('research-provider') as HTMLElement & { value: string };
 	const status = section.querySelector<HTMLElement>('.research-status')!;
-	const saveButton = document.querySelector<HTMLButtonElement>('#research-save');
 	const clearButton = document.querySelector<HTMLButtonElement>('#research-clear');
 	const saveStatus = section.querySelector<HTMLElement>('.research-save-status');
-	let dirty = false;
 
 	function setStatus(element: HTMLElement, text: string, ok: boolean) {
 		element.textContent = text;
@@ -138,7 +137,6 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 			}
 			const job = (await response.json()) as { status: string; error: string | null };
 			if (job.status === 'succeeded') {
-				dirty = false;
 				location.reload();
 				return;
 			}
@@ -152,9 +150,10 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 	}
 
 	runButton.addEventListener('click', async () => {
-		if (dirty && !confirmReplace()) return;
 		runButton.disabled = true;
 		try {
+			// Research reads the saved trip details and notes.
+			if (!(await flushAll())) throw new Error('Something on the page couldn\u2019t be saved; see the messages on the page.');
 			const { id } = await request('POST', { provider: provider.value });
 			if (!id) throw new Error('The server did not return a job');
 			await waitForResearch(id);
@@ -164,49 +163,30 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 		}
 	});
 
-	// Unsaved edits would be lost by a new run; say so in the status line instead of a dialog.
-	let replaceArmed = false;
-	function confirmReplace(): boolean {
-		if (replaceArmed) return true;
-		replaceArmed = true;
-		setStatus(status, 'You have unsaved edits. Click again to research anyway and lose them.', false);
-		setTimeout(() => (replaceArmed = false), 5000);
-		return false;
-	}
-
-	function markDirty() {
-		dirty = true;
-		if (saveButton) saveButton.disabled = false;
-		if (saveStatus) saveStatus.textContent = '';
-	}
+	// Edits to the notes save as you type; removing a note saves at once. Empty notes
+	// can't be saved, so they wait (with a message) until they have text or are removed.
+	const saver = saveStatus
+		? autosave(
+				async () => {
+					const items = [...section.querySelectorAll<HTMLLIElement>('.research-items > li')].map((item) => ({
+						id: item.dataset.id!,
+						text: item.querySelector('textarea')!.value.trim(),
+					}));
+					if (items.some((item) => !item.text)) throw new Error('A note is empty. Remove it instead.');
+					await request('PUT', { items });
+				},
+				saveStatus,
+				{ affectsPost: false },
+			)
+		: null;
 
 	for (const item of section.querySelectorAll<HTMLLIElement>('.research-items > li')) {
-		item.querySelector('textarea')!.addEventListener('input', markDirty);
+		item.querySelector('textarea')!.addEventListener('input', () => saver?.schedule());
 		item.querySelector('.research-remove')!.addEventListener('click', () => {
 			item.remove();
-			markDirty();
+			saver?.schedule(0);
 		});
 	}
-
-	saveButton?.addEventListener('click', async () => {
-		const items = [...section.querySelectorAll<HTMLLIElement>('.research-items > li')].map((item) => ({
-			id: item.dataset.id!,
-			text: item.querySelector('textarea')!.value.trim(),
-		}));
-		if (items.some((item) => !item.text)) {
-			setStatus(saveStatus!, 'A note is empty. Remove it instead.', false);
-			return;
-		}
-		saveButton.disabled = true;
-		try {
-			await request('PUT', { items });
-			dirty = false;
-			setStatus(saveStatus!, 'Saved', true);
-		} catch (error) {
-			saveButton.disabled = false;
-			setStatus(saveStatus!, (error as Error).message, false);
-		}
-	});
 
 	clearButton?.addEventListener('click', async () => {
 		if (clearButton.dataset.armed !== 'true') {
@@ -221,7 +201,6 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 		clearButton.disabled = true;
 		try {
 			await request('DELETE');
-			dirty = false;
 			location.reload();
 		} catch (error) {
 			clearButton.disabled = false;
@@ -229,9 +208,6 @@ const researchedOn = research && new Date(research.createdAt).toLocaleDateString
 		}
 	});
 
-	window.addEventListener('beforeunload', (event) => {
-		if (dirty) event.preventDefault();
-	});
 
 	if (section.dataset.runningJob) waitForResearch(section.dataset.runningJob);
 </script>
