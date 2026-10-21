@@ -1,9 +1,8 @@
 ---
 import Lightbox from '../../../../components/Lightbox.astro';
 import PostBody from '../../../../components/PostBody.astro';
-import TripMap from '../../../../components/TripMap.astro';
 import Base from '../../../../layouts/Base.astro';
-import { parseBody, splitOpening } from '../../../../lib/blocks';
+import { parseBody } from '../../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin, getVideosForPost } from '../../../../lib/db';
 import { formatTripDates } from '../../../../lib/format';
 import { mapView, pinLabel } from '../../../../lib/map';
@@ -15,7 +14,6 @@ if (!post) return new Response('Not found', { status: 404 });
 const photos = await getPhotosForAdmin(post.id);
 const videos = await getVideosForPost(post.id);
 const blocks = parseBody(post.body, photos.map((photo) => photo.id), videos.map((video) => video.id));
-const { opening, rest } = splitOpening(blocks);
 const dates = formatTripDates(post.trip_start, post.trip_end);
 const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.place_lon, label: pinLabel(post.map_pin, post.location) });
 ---
@@ -31,9 +29,7 @@ const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.plac
 			<h1>{post.title}</h1>
 			{post.summary && <p class="summary">{post.summary}</p>}
 		</header>
-		{opening.length > 0 && <PostBody blocks={opening} photos={photos} videos={videos} mediaBase="/api/admin/media/" opening />}
-		{map && <TripMap view={map} style={post.map_style} />}
-		<PostBody blocks={rest} photos={photos} videos={videos} mediaBase="/api/admin/media/" />
+		<PostBody blocks={blocks} photos={photos} videos={videos} map={map && { view: map, style: post.map_style }} mediaBase="/api/admin/media/" />
 	</main>
 	<Lightbox />
 </Base>

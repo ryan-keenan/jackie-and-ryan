@@ -34,6 +34,7 @@ const TYPE_NAMES: Record<BlockType, string> = {
 	gallery: 'Gallery',
 	video: 'Video',
 	quote: 'Quote',
+	map: 'Map',
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -188,6 +189,11 @@ export class BlockEditor {
 				by.addEventListener('input', save);
 				return el('div', { className: 'stack' }, text, by);
 			}
+			case 'map':
+				return el('p', {
+					className: 'hint',
+					textContent: 'The map goes here. Its pin, zoom and style are set under the post details above; a map set to "No map" is not shown.',
+				});
 			case 'photo':
 				return el(
 					'div',
@@ -241,6 +247,11 @@ export class BlockEditor {
 		}
 	}
 
+	/** A post has at most one map. */
+	private hasMap(): boolean {
+		return this.blocks.some((block) => block.type === 'map');
+	}
+
 	private move(index: number, delta: number) {
 		const target = index + delta;
 		if (target < 0 || target >= this.blocks.length) return;
@@ -257,6 +268,7 @@ export class BlockEditor {
 			photo: first ? { type: 'photo', photoId: first } : null,
 			gallery: this.photos.length >= 2 ? { type: 'gallery', photoIds: [this.photos[0].id, this.photos[1].id] } : null,
 			video: this.videos[0] ? { type: 'video', videoId: this.videos[0].id } : null,
+			map: this.hasMap() ? null : { type: 'map' },
 		};
 		const block = blank[type];
 		if (!block) return;
@@ -297,7 +309,8 @@ export class BlockEditor {
 			const disabled =
 				(type === 'photo' && this.photos.length < 1) ||
 				(type === 'gallery' && this.photos.length < 2) ||
-				(type === 'video' && this.videos.length < 1);
+				(type === 'video' && this.videos.length < 1) ||
+				(type === 'map' && this.hasMap());
 			const button = el('button', { type: 'button', className: 'button secondary small', textContent: TYPE_NAMES[type], disabled });
 			button.addEventListener('click', () => this.add(type));
 			addBar.appendChild(button);

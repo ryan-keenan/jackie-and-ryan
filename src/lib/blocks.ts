@@ -13,6 +13,8 @@ export const blockSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('gallery'), photoIds: z.array(photoId).min(2).max(6) }),
 	// A Cloudflare Stream video from the post's videos table.
 	z.object({ type: z.literal('video'), videoId: z.string().min(1) }),
+	// The post's map. Its pin, zoom and style are post settings, not part of the block.
+	z.object({ type: z.literal('map') }),
 	z.object({
 		type: z.literal('quote'),
 		text: z.string().min(1),
@@ -20,7 +22,9 @@ export const blockSchema = z.discriminatedUnion('type', [
 	}),
 ]);
 
-export const bodySchema = z.array(blockSchema);
+export const bodySchema = z
+	.array(blockSchema)
+	.refine((body) => body.filter((block) => block.type === 'map').length <= 1, 'A post can have only one map');
 
 export type Block = z.infer<typeof blockSchema>;
 
@@ -60,11 +64,13 @@ export function parseBody(json: string, postPhotoIds: Iterable<string>, postVide
 }
 
 /**
- * Splits off the photo or gallery that opens a post, which is shown right under
- * the title and summary (above the map). Bodies that open with text have none.
+ * The body with a map block in its default place, right after the photo or
+ * gallery that opens the post (or first, when the post opens with text). Bodies
+ * that already have a map, and empty bodies, are returned unchanged. Keep this in
+ * step with migrations/0010_map_block.sql, which did the same to existing posts.
  */
-export function splitOpening(body: Block[]): { opening: Block[]; rest: Block[] } {
-	const first = body[0];
-	if (first && (first.type === 'photo' || first.type === 'gallery')) return { opening: [first], rest: body.slice(1) };
-	return { opening: [], rest: body };
+export function withDefaultMap(body: Block[]): Block[] {
+	if (body.length === 0 || body.some((block) => block.type === 'map')) return body;
+	const at = body[0].type === 'photo' || body[0].type === 'gallery' ? 1 : 0;
+	return [...body.slice(0, at), { type: 'map' }, ...body.slice(at)];
 }

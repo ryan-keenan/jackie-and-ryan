@@ -116,7 +116,7 @@ function jobText(): string {
 					</select>
 				</div>
 				<div class="span-2">
-					<label for="map_mode">Map under the title</label>
+					<label for="map_mode">Map zoom</label>
 					<select id="map_mode" name="map_mode" data-map-setting>
 						{MAP_MODES.map((mode) => <option value={mode} selected={post.map_mode === mode}>{MAP_MODE_LABELS[mode]}</option>)}
 					</select>

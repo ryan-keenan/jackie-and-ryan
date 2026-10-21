@@ -10,6 +10,7 @@ import {
 	updateJob,
 } from '../db';
 import { parseResearch, type Research, type ResearchProvider } from '../research';
+import { withDefaultMap } from '../blocks';
 import { AI_MAX_PX } from '../photo-meta';
 import { thumbnailUrl } from '../stream';
 import { DraftFailed, generateDraft, isRetryable, readDraftConfig } from './draft';
@@ -93,7 +94,8 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 			title: result.draft.title,
 			summary: result.draft.summary,
 			coverPhotoId: result.draft.coverPhotoId,
-			body: JSON.stringify(result.draft.body),
+			// Drafts don't place the map; it goes in its default spot, and the admins can move it.
+			body: JSON.stringify(withDefaultMap(result.draft.body)),
 			captions: result.draft.captions,
 			videoCaptions: result.draft.videoCaptions,
 		});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBody, referencedPhotoIds, splitOpening, type Block } from './blocks';
+import { parseBody, referencedPhotoIds, withDefaultMap, type Block } from './blocks';
 
 const body: Block[] = [
 	{ type: 'paragraph', markdown: 'Hello' },
@@ -41,15 +41,24 @@ describe('referencedPhotoIds', () => {
 	});
 });
 
-describe('splitOpening', () => {
-	it('splits off a photo or gallery that opens the post', () => {
-		const [photo, gallery, ...more] = body.slice(1);
-		expect(splitOpening([photo, ...more])).toEqual({ opening: [photo], rest: more });
-		expect(splitOpening([gallery, ...more])).toEqual({ opening: [gallery], rest: more });
+describe('withDefaultMap', () => {
+	const photo: Block = { type: 'photo', photoId: 'a' };
+	const text: Block = { type: 'paragraph', markdown: 'Hello' };
+
+	it('puts the map after an opening photo, or first when the post opens with text', () => {
+		expect(withDefaultMap([photo, text])).toEqual([photo, { type: 'map' }, text]);
+		expect(withDefaultMap([text, photo])).toEqual([{ type: 'map' }, text, photo]);
 	});
 
-	it('has no opening when the post starts with text', () => {
-		expect(splitOpening(body)).toEqual({ opening: [], rest: body });
-		expect(splitOpening([])).toEqual({ opening: [], rest: [] });
+	it('leaves bodies with a map, and empty bodies, alone', () => {
+		const placed: Block[] = [text, { type: 'map' }, photo];
+		expect(withDefaultMap(placed)).toBe(placed);
+		expect(withDefaultMap([])).toEqual([]);
+	});
+});
+
+describe('bodySchema', () => {
+	it('allows at most one map', () => {
+		expect(() => parseBody(JSON.stringify([{ type: 'map' }, { type: 'map' }]), [])).toThrow(/only one map/);
 	});
 });

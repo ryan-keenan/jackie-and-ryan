@@ -1,8 +1,10 @@
 ---
 import type { Block } from '../lib/blocks';
 import type { PhotoRow, VideoRow } from '../lib/db';
+import type { MapStyle, MapView } from '../lib/map';
 import { renderMarkdown } from '../lib/markdown';
 import { playerUrl } from '../lib/stream';
+import TripMap from './TripMap.astro';
 
 interface Props {
 	blocks: Block[];
@@ -12,12 +14,13 @@ interface Props {
 	videos?: VideoRow[];
 	/** Where images are served from: the public route, or the admin route for previews of drafts. */
 	mediaBase?: '/media/' | '/api/admin/media/';
-	/** The photo or gallery that opens the post, shown right under the title: load it immediately rather than lazily. */
-	opening?: boolean;
+	/** The map a map block shows, or null when the post's map is off or has no place to show. */
+	map?: { view: MapView; style: MapStyle } | null;
 }
 
-const { blocks, photos, videos = [], mediaBase = '/media/', opening = false } = Astro.props;
-const loading = opening ? 'eager' : 'lazy';
+const { blocks, photos, videos = [], mediaBase = '/media/', map = null } = Astro.props;
+// The first block sits right under the title, so its photos load immediately.
+const loadingFor = (index: number) => (index === 0 ? 'eager' : 'lazy');
 const mediaUrl = (key: string) => `${mediaBase}${key}`;
 const photosById = new Map(photos.map((photo) => [photo.id, photo]));
 const photo = (id: string) => photosById.get(id)!;
@@ -27,7 +30,8 @@ const video = (id: string) => videosById.get(id)!;
 
 <div class="post-body">
 	{
-		blocks.map((block) => {
+		blocks.map((block, index) => {
+			const loading = loadingFor(index);
 			switch (block.type) {
 				case 'heading':
 					return <h2>{block.text}</h2>;
@@ -73,6 +77,14 @@ const video = (id: string) => videosById.get(id)!;
 						</figure>
 					);
 				}
+				case 'map':
+					return (
+						map && (
+							<div class="wide map-block">
+								<TripMap view={map.view} style={map.style} />
+							</div>
+						)
+					);
 				case 'gallery':
 					return (
 						<div class={`gallery wide count-${block.photoIds.length}`}>
@@ -149,6 +161,14 @@ const video = (id: string) => videosById.get(id)!;
 
 	figure {
 		margin-block: 2.5rem !important;
+	}
+
+	.map-block {
+		margin-block: 2.5rem !important;
+	}
+
+	.map-block :global(.trip-map) {
+		margin: 0;
 	}
 
 	/* Each photo keeps its own shape: full width when landscape, narrower and
