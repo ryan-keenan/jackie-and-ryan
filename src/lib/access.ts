@@ -88,3 +88,17 @@ export async function verifyAdmin(
 	}
 	return email.toLowerCase();
 }
+
+/**
+ * The Access token from the CF_Authorization cookie. Access sends the
+ * Cf-Access-Jwt-Assertion header only on paths its application covers (the admin
+ * pages), but sets this cookie for the whole site after sign-in, so public pages
+ * read it to tell whether the visitor is a signed-in admin.
+ */
+export function accessCookieToken(cookieHeader: string | null): string | null {
+	for (const part of cookieHeader?.split(';') ?? []) {
+		const [name, ...value] = part.trim().split('=');
+		if (name === 'CF_Authorization') return value.join('=') || null;
+	}
+	return null;
+}

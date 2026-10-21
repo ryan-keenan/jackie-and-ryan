@@ -1,13 +1,17 @@
 import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
-import { AccessDenied, readAccessConfig, verifyAdmin } from './lib/access';
+import { AccessDenied, accessCookieToken, readAccessConfig, verifyAdmin } from './lib/access';
 
 export function isAdminPath(pathname: string): boolean {
 	return /^\/(api\/)?admin(\/|$)/.test(pathname);
 }
 
-/** The signed-in admin's email for a request, or AccessDenied. */
-async function authenticateAdmin(request: Request): Promise<string> {
+/**
+ * The signed-in admin's email for a request, or AccessDenied. Admin pages use the
+ * header Access adds on the paths it guards; public pages, which Access doesn't
+ * guard, use its sign-in cookie.
+ */
+async function authenticateAdmin(request: Request, source: 'header' | 'cookie'): Promise<string> {
 	if (import.meta.env.DEV) {
 		// `npm run dev` has no Cloudflare Access in front of it, so the local admin
 		// identity comes from .dev.vars. import.meta.env.DEV is false in production
@@ -16,13 +20,15 @@ async function authenticateAdmin(request: Request): Promise<string> {
 		if (!devEmail) throw new Error('Set DEV_ADMIN_EMAIL in .dev.vars to use the admin pages locally');
 		return devEmail.toLowerCase();
 	}
-	return verifyAdmin(request.headers.get('cf-access-jwt-assertion'), readAccessConfig(env));
+	const token =
+		source === 'header' ? request.headers.get('cf-access-jwt-assertion') : accessCookieToken(request.headers.get('cookie'));
+	return verifyAdmin(token, readAccessConfig(env));
 }
 
 /** Whether a public-page visitor is a signed-in admin. A missing or non-admin login is simply "no". */
 async function isSignedInAdmin(request: Request): Promise<boolean> {
 	try {
-		await authenticateAdmin(request);
+		await authenticateAdmin(request, 'cookie');
 		return true;
 	} catch (error) {
 		if (error instanceof AccessDenied) return false;
@@ -60,7 +66,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	}
 
 	try {
-		context.locals.adminEmail = await authenticateAdmin(context.request);
+		context.locals.adminEmail = await authenticateAdmin(context.request, 'header');
 		context.locals.isAdmin = true;
 	} catch (error) {
 		if (error instanceof AccessDenied) {

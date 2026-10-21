@@ -1,6 +1,6 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { AccessDenied, parseEmailList, readAccessConfig, verifyAdmin, type AccessConfig } from './access';
+import { AccessDenied, accessCookieToken, parseEmailList, readAccessConfig, verifyAdmin, type AccessConfig } from './access';
 
 const config: AccessConfig = {
 	teamDomain: 'example.cloudflareaccess.com',
@@ -87,5 +87,18 @@ describe('readAccessConfig', () => {
 describe('parseEmailList', () => {
 	it('splits on commas and whitespace', () => {
 		expect(parseEmailList('a@x.com,b@x.com  c@x.com\n')).toEqual(['a@x.com', 'b@x.com', 'c@x.com']);
+	});
+});
+
+describe('accessCookieToken', () => {
+	it('reads the CF_Authorization cookie among others', () => {
+		expect(accessCookieToken('theme=dark; CF_Authorization=a.b.c; other=1')).toBe('a.b.c');
+		expect(accessCookieToken('CF_Authorization=a.b=c')).toBe('a.b=c');
+	});
+
+	it('returns null when the cookie is missing or empty', () => {
+		expect(accessCookieToken(null)).toBeNull();
+		expect(accessCookieToken('theme=dark')).toBeNull();
+		expect(accessCookieToken('CF_Authorization=')).toBeNull();
 	});
 });

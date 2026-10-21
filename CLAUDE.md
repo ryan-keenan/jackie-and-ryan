@@ -24,7 +24,7 @@ npx astro preview       # serve the production build in the local Cloudflare run
 Local data lives in `.wrangler/state` (gitignored) and is shared by `npm run dev`, `astro preview` and `wrangler --local` commands. Nothing local touches the deployed database or photo storage.
 
 ### Deployment
-Run `npm run build && npx wrangler deploy` to deploy to Cloudflare Workers. The Worker serves https://jackieandryan.us (www redirects to it) through the `routes` in `wrangler.jsonc`. The whole site is behind a Cloudflare Access login (Google or an emailed one-time code) for the two admins. GitHub Pages is turned off and nothing deploys on push.
+Run `npm run build && npx wrangler deploy` to deploy to Cloudflare Workers. The Worker serves https://jackieandryan.us (www redirects to it) through the `routes` in `wrangler.jsonc`. Public pages (the homepage, published public posts and the wedding page) are open to anyone. Only `/admin` and `/api/admin` are behind a Cloudflare Access login (Google or an emailed one-time code) for the two admins. GitHub Pages is turned off and nothing deploys on push.
 
 ## Architecture
 
@@ -40,7 +40,7 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 - `src/lib/markdown.ts`: Markdown rendering with raw HTML disabled.
 - `src/pages/index.astro`: the homepage cards, newest first. `src/lib/journal.ts` merges published public posts with `STATIC_ENTRIES`, entries that live outside the database. The wedding page is one of those, dated 2025-12-21 and using `public/journal/wedding-card.jpg`. Posts sort by trip start date, or by publish date if they have none.
 - **Site header:** `src/lib/site-header.ts` returns the header as an HTML string, and its styles are in `src/styles/site-header.css`. The journal layout and the wedding page both use these, so the header is defined once.
-- **Admin links on public pages:** the middleware sets `locals.isAdmin` on every page. When the visitor is a signed-in admin, the header shows an "Admin" button and post pages show "Edit post", and the page is sent `private, no-cache` so those links are never cached for anyone else.
+- **Admin links on public pages:** the middleware sets `locals.isAdmin` on every page. Access doesn't guard public pages, so there it reads the `CF_Authorization` sign-in cookie that Access sets for the whole site (`accessCookieToken` in `src/lib/access.ts`) instead of the `Cf-Access-Jwt-Assertion` header admin pages get. When the visitor is a signed-in admin, the header shows an "Admin" button and post pages show "Edit post", and the page is sent `private, no-cache` so those links are never cached for anyone else.
 - `src/pages/posts/[slug].astro`: a published public post. Drafts and private posts return 404.
 - `src/pages/media/[...key].ts`: serves display and thumbnail images from R2, only for published public posts. Originals are never served.
 - `src/components/Lightbox.astro`: the full-screen photo viewer, ported from the wedding page. Any element with `data-lightbox-src` opens it.
