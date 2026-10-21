@@ -178,8 +178,8 @@ export async function slugExists(slug: string): Promise<boolean> {
 export async function createDraftPost(input: { id: string; slug: string; title: string; createdBy: string }): Promise<void> {
 	const now = new Date().toISOString();
 	await env.DB.prepare(
-		`INSERT INTO posts (id, slug, title, status, visibility, map_mode, created_by, created_at, updated_at)
-		 VALUES (?, ?, ?, 'draft', 'public', 'fit', ?, ?, ?)`,
+		`INSERT INTO posts (id, slug, title, status, visibility, map_mode, map_style, created_by, created_at, updated_at)
+		 VALUES (?, ?, ?, 'draft', 'public', 'fit', 'light-topo', ?, ?, ?)`,
 	)
 		.bind(input.id, input.slug, input.title, input.createdBy, now, now)
 		.run();
