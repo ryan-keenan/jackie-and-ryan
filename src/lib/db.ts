@@ -15,7 +15,9 @@ export interface PostRow {
 	body: string;
 	map_mode: MapMode;
 	map_style: MapStyle;
-	/** Where the Location text points, for the map when no photo has GPS. */
+	/** Map-search text for the post's one map pin; empty to use the Location. See migrations/0009_map_pin.sql. */
+	map_pin: string;
+	/** Where the map pin (or, without one, the Location) points. */
 	place_lat: number | null;
 	place_lon: number | null;
 	place_name: string;
@@ -46,7 +48,7 @@ export type PostListItem = Pick<
 > & { cover_thumb_key: string | null; cover_alt: string | null };
 
 const POST_COLUMNS =
-	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, place_lat, place_lon, place_name, research, published_at';
+	'id, slug, title, summary, status, visibility, trip_start, trip_end, location, cover_photo_id, body, map_mode, map_style, map_pin, place_lat, place_lon, place_name, research, published_at';
 
 export async function listPublishedPosts(visibility: PostRow['visibility']): Promise<PostListItem[]> {
 	const { results } = await env.DB.prepare(
@@ -192,6 +194,7 @@ export interface PostDetailsUpdate {
 	location?: string;
 	map_mode?: MapMode;
 	map_style?: MapStyle;
+	map_pin?: string;
 	place_lat?: number | null;
 	place_lon?: number | null;
 	place_name?: string;
@@ -206,6 +209,7 @@ const EDITABLE_POST_COLUMNS: readonly (keyof PostDetailsUpdate)[] = [
 	'location',
 	'map_mode',
 	'map_style',
+	'map_pin',
 	'place_lat',
 	'place_lon',
 	'place_name',

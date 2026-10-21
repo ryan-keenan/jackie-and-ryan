@@ -1,15 +1,17 @@
-// Maps on post pages: where the photos were taken, at a zoom level the admins
-// choose per post. When no photo has a GPS position, the map shows the place the
-// post's Location names instead (see src/lib/geocode.ts). Positions are rounded
-// before they reach the public page so a map shows the area, not the exact spot
-// (such as a home address).
+// Maps on post pages: one labeled pin on the place the post is about, at a zoom
+// level the admins choose per post. The place comes from the post's map pin text
+// (which the AI suggests, see src/lib/ai/place.ts) or, without one, its Location,
+// both looked up with src/lib/geocode.ts. When neither finds a place, the pin goes
+// in the middle of the photos' GPS positions. Positions are rounded before they
+// reach the public page so a map shows the area, not the exact spot (such as a
+// home address).
 
 export const MAP_MODES = ['off', 'fit', 'city', 'region', 'country', 'world'] as const;
 export type MapMode = (typeof MAP_MODES)[number];
 
 export const MAP_MODE_LABELS: Record<MapMode, string> = {
 	off: 'No map',
-	fit: 'The area where the photos were taken',
+	fit: 'The area around the place',
 	city: 'City',
 	region: 'Region or state',
 	country: 'Country',
@@ -36,8 +38,12 @@ export const MAP_STYLE_LABELS: Record<MapStyle, string> = {
 	globe: 'Globe (always shows the whole planet)',
 };
 
-/** MapLibre zoom level for each fixed mode. */
-export const ZOOM: Record<Exclude<MapMode, 'off' | 'fit'>, number> = {
+/**
+ * MapLibre zoom level for each mode. 'fit' shows roughly 80 to 150 km across,
+ * depending on screen width, so the nearest city is in view for orientation.
+ */
+export const ZOOM: Record<Exclude<MapMode, 'off'>, number> = {
+	fit: 9.3,
 	city: 11,
 	region: 6.5,
 	country: 4.2,
@@ -51,15 +57,13 @@ export type LonLat = [number, number];
 
 export interface MapView {
 	mode: Exclude<MapMode, 'off'>;
-	/** 'photos' when built from photo GPS, 'place' when from the post's Location. */
-	source: 'photos' | 'place';
-	/** Distinct, rounded positions. */
-	points: LonLat[];
-	center: LonLat;
-	/** Set for fixed modes; 'fit' uses bounds instead. */
-	zoom: number | null;
-	/** [west, south, east, north], for 'fit'. */
-	bounds: [number, number, number, number];
+	/** 'place' when the pin is the looked-up map pin or Location, 'photos' when it is the middle of the photos' GPS. */
+	source: 'place' | 'photos';
+	/** The one pin, rounded. */
+	pin: LonLat;
+	/** Text shown next to the pin; empty for none. */
+	label: string;
+	zoom: number;
 }
 
 function round(value: number): number {
@@ -69,40 +73,28 @@ function round(value: number): number {
 
 type Position = { lat: number | null; lon: number | null };
 
-/**
- * The map for a post: from the photos' positions, or from the post's looked-up
- * place when no photo has one. Null when the map is off or neither exists.
- * Antimeridian-spanning trips (e.g. Fiji) would center oddly; none are expected,
- * so that case is not handled.
- */
-export function mapView(mode: MapMode, photos: Position[], place: Position): MapView | null {
-	if (mode === 'off') return null;
-	const fromPhotos = points(photos);
-	const source = fromPhotos.length > 0 ? 'photos' : 'place';
-	const all = source === 'photos' ? fromPhotos : points([place]);
-	if (all.length === 0) return null;
-
-	const lons = all.map((p) => p[0]);
-	const lats = all.map((p) => p[1]);
-	const bounds: MapView['bounds'] = [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
-	const center: LonLat = [round((bounds[0] + bounds[2]) / 2), round((bounds[1] + bounds[3]) / 2)];
-	return { mode, source, points: all, center, zoom: mode === 'fit' ? null : ZOOM[mode], bounds };
+/** The pin's label: the place's name, which is the map pin text (or else the Location) up to its first comma. */
+export function pinLabel(mapPin: string, location: string): string {
+	return (mapPin.trim() || location.trim()).split(',')[0].trim();
 }
 
-/** Distinct positions, rounded to about 1 km. */
-function points(positions: Position[]): LonLat[] {
-	const seen = new Set<string>();
-	const points: LonLat[] = [];
-	for (const { lat, lon } of positions) {
-		if (lat === null || lon === null) continue;
-		const point: LonLat = [round(lon), round(lat)];
-		const key = point.join(',');
-		if (!seen.has(key)) {
-			seen.add(key);
-			points.push(point);
-		}
+/**
+ * The map for a post: a pin on its looked-up place, or in the middle of the
+ * photos' positions when there is no place. Null when the map is off or there
+ * is neither. Antimeridian-spanning photo sets (e.g. Fiji) would center oddly;
+ * none are expected, so that case is not handled.
+ */
+export function mapView(mode: MapMode, photos: Position[], place: Position & { label: string }): MapView | null {
+	if (mode === 'off') return null;
+	if (place.lat !== null && place.lon !== null) {
+		return { mode, source: 'place', pin: [round(place.lon), round(place.lat)], label: place.label, zoom: ZOOM[mode] };
 	}
-	return points;
+	const located = photos.filter((p): p is { lat: number; lon: number } => p.lat !== null && p.lon !== null);
+	if (located.length === 0) return null;
+	const lons = located.map((p) => p.lon);
+	const lats = located.map((p) => p.lat);
+	const pin: LonLat = [round((Math.min(...lons) + Math.max(...lons)) / 2), round((Math.min(...lats) + Math.max(...lats)) / 2)];
+	return { mode, source: 'photos', pin, label: '', zoom: ZOOM[mode] };
 }
 
 /** How many photos have a GPS position, for the admin page. */
@@ -110,12 +102,14 @@ export function locatedCount(photos: { lat: number | null; lon: number | null }[
 	return photos.filter((p) => p.lat !== null && p.lon !== null).length;
 }
 
-/** What the admin page says about where the map comes from. */
-export function mapSourceHint(located: number, total: number, placeName: string): string {
-	const pins = 'Pins are placed to within about 1 km, never the exact spot.';
-	if (located > 0) return `${located} of ${total} photos have a location. ${pins}`;
+/** What the admin page says about where the pin comes from. */
+export function mapSourceHint(placeName: string, located: number): string {
+	const rounding = 'The pin is placed to within about 1 km, never the exact spot.';
 	if (placeName) {
-		return `No photo has a location, so the map shows the Location: ${placeName}. If that's the wrong place, make the Location more specific (for example, add the county).`;
+		return `The pin marks ${placeName}. If that's the wrong place, edit the map pin (for example, add the state) or use Find the place. ${rounding}`;
 	}
-	return 'No photo has a location and the Location didn’t match a place, so there’s no map. Try a nearby town or landmark.';
+	if (located > 0) {
+		return `No place was found for the map pin, so it marks the middle of the ${located} photo${located === 1 ? '' : 's'} with a location. Use Find the place, or type a place. ${rounding}`;
+	}
+	return 'No place was found for the map pin and no photo has a location, so there’s no map. Use Find the place, or type a place.';
 }

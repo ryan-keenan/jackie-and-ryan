@@ -92,13 +92,17 @@ Every page is rendered on request (`output: 'server'`) from D1, so publishing a 
 - **Caching:** public pages send `cache-control: no-cache`, so edits and unpublishing show up on the next visit.
 
 ### Maps
-- **Setting:** each post has a `map_mode`: `off`, `fit`, `city`, `region`, `country` or `world`. New posts default to `fit`, the area where the photos were taken. `fit` zooms in no further than about 20 km across, so a single pin still shows its surroundings.
-- **Photos without GPS:** phones often strip location when photos are shared, so many uploads have none. When no photo on a post has a position, the map uses the post's Location text instead.
-  - Saving a changed Location looks it up with OpenStreetMap's free Nominatim service (`src/lib/geocode.ts`) and stores the match in `place_lat`, `place_lon` and `place_name`.
+- **One pin:** each map shows a single labeled pin on the place the post is about, not every place a photo was taken.
+- **Zoom:** each post has a `map_mode`: `off`, `fit`, `city`, `region`, `country` or `world` (`ZOOM` in `src/lib/map.ts`). New posts default to `fit`, "the area around the place": roughly 80 to 150 km across, so the nearest city is in view for orientation.
+- **The map pin** (`posts.map_pin`) is map-search text such as "Black Velvet Canyon, Nevada, USA". The text before the first comma labels the pin.
+  - **Finding it:** "Find the place" on the admin post page (`POST /api/admin/posts/:id/place`) asks Claude to work out the place from the post's title, Location, dates, notes, photo and video notes, captions and text. No photos are sent. Claude knows most named climbs, trails and landmarks, and can run up to 3 web searches for ones it doesn't. The drafting job also runs it after a draft when the map pin is empty; if that fails, the draft is still saved and the failure is shown with the draft status.
+  - **Model and prompt:** the model is the `PLACE_MODEL` var (`claude-sonnet-5-5`, confirmed with the owners). The prompt is in `src/lib/ai/place-prompt.ts`; do not change its wording without the owners' approval.
+  - **Looking it up:** saving a changed map pin (or, when it's empty, a changed Location) looks the text up with OpenStreetMap's free Nominatim service (`src/lib/geocode.ts`, called from `src/lib/post-place.ts`) and stores the match in `place_lat`, `place_lon` and `place_name`.
   - If the full text matches nothing, leading comma-separated parts are dropped ("Black Wall, Donner Summit" finds Donner Summit).
-  - The admin page shows the matched place, because names are ambiguous ("Eagle Lake, CA" matches one in Tulare County). A more specific Location fixes a wrong match.
+  - The admin page shows the matched place, because names are ambiguous ("Eagle Lake, CA" matches one in Tulare County). A more specific pin fixes a wrong match.
   - If the lookup service fails, the save fails with an error rather than keeping a stale place.
-- **Rendering:** `src/lib/map.ts` turns photo GPS positions (or the looked-up place) into a map view. `src/components/TripMap.astro` places it under the post title, and `src/scripts/trip-map.ts` draws it with MapLibre. MapLibre loads only when the map scrolls near view.
+  - When nothing is found, the pin goes in the middle of the photos' GPS positions, unlabeled. Phones often strip location when photos are shared, so many uploads have none.
+- **Rendering:** `src/lib/map.ts` turns the looked-up place (or the photos' positions) into a map view. `src/components/TripMap.astro` places it under the post title (below an opening photo), and `src/scripts/trip-map.ts` draws it with MapLibre. MapLibre loads only when the map scrolls near view.
 - **Styles:** each post also has a `map_style`, one of `MAP_STYLES` in `src/lib/map.ts` (the database CHECK constraint must match; a test enforces it). New and existing posts start with `light`.
   - **Drawn maps:** `light` (OpenFreeMap Positron, warmed to the site palette), `liberty` and `fiord` are OpenFreeMap styles. `light-topo` adds relief shading and contour lines in feet. `old-world` recolors Positron as parchment and ink, and TripMap.astro adds paper grain and a compass rose over it.
   - **Satellite:** `satellite`, `satellite-topo`, `terrain-3d` (tilted, over real elevation) and `globe` (always the whole planet) use EOX Sentinel-2 cloudless imagery. It is 10 m per pixel and licensed CC BY-NC-SA, which allows this non-commercial site; a commercial use would need a different source.

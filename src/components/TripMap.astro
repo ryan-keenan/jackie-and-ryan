@@ -1,12 +1,13 @@
 ---
 import type { MapStyle, MapView } from '../lib/map';
 
-// Map of where a post's photos were taken. MapLibre and the map tiles load only
+// Map with one labeled pin on the place a post is about. MapLibre and the map tiles load only
 // when the map scrolls near view, so posts without a map, or readers who don't
 // scroll to it, pay nothing. The drawing code is in src/scripts/trip-map.ts.
 //
 // With `preview`, the admin page can redraw the map by dispatching a
-// "trip-map:update" event on the figure with { mode, style } as its detail.
+// "trip-map:update" event on the figure with { mode, style } as its detail, plus
+// `view` when the pin has moved.
 
 interface Props {
 	view: MapView;
@@ -22,7 +23,7 @@ const { view, style, preview = false } = Astro.props;
 		class="trip-map-canvas"
 		data-map={JSON.stringify(view)}
 		role="img"
-		aria-label={view.source === 'photos' ? 'Map of where the photos were taken' : 'Map of where the trip was'}
+		aria-label={view.label ? `Map showing ${view.label}` : 'Map of where the photos were taken'}
 	>
 	</div>
 	<div class="trip-map-paper" aria-hidden="true">
@@ -43,7 +44,7 @@ const { view, style, preview = false } = Astro.props;
 <script>
 	import type { MapMode, MapStyle, MapView } from '../lib/map';
 
-	type Update = { mode: MapMode; style: MapStyle };
+	type Update = { mode: MapMode; style: MapStyle; view?: MapView };
 
 	for (const figure of document.querySelectorAll<HTMLElement>('.trip-map')) {
 		const container = figure.querySelector<HTMLElement>('.trip-map-canvas')!;
@@ -60,7 +61,7 @@ const { view, style, preview = false } = Astro.props;
 		const draw = () => {
 			// The admin preview may have changed the settings before the map was first drawn.
 			const mode = latest.mode === 'off' ? view.mode : latest.mode;
-			drawn ??= import('../scripts/trip-map').then(({ drawTripMap }) => drawTripMap(container, { ...view, mode }, latest.style));
+			drawn ??= import('../scripts/trip-map').then(({ drawTripMap }) => drawTripMap(container, { ...(latest.view ?? view), mode }, latest.style));
 			drawn.catch(fail);
 		};
 
@@ -81,8 +82,8 @@ const { view, style, preview = false } = Astro.props;
 				figure.dataset.style = latest.style;
 				figure.toggleAttribute('data-off', latest.mode === 'off');
 				if (latest.mode === 'off' || !drawn) return;
-				const { mode, style } = latest;
-				drawn.then((map) => map.update(mode, style)).catch(fail);
+				const { mode, style, view: moved } = latest;
+				drawn.then((map) => map.update(mode, style, moved)).catch(fail);
 			});
 		}
 	}
@@ -109,6 +110,30 @@ const { view, style, preview = false } = Astro.props;
 		background: var(--pin, #b8935f);
 		border: 2px solid #fff;
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+	}
+
+	/* The place name, beside the pin on a pill that reads on every map style. */
+	.trip-map-canvas :global(.trip-map-label) {
+		position: absolute;
+		left: calc(100% + 8px);
+		top: 50%;
+		transform: translateY(-50%);
+		width: max-content;
+		max-width: min(16rem, 40vw);
+		padding: 0.2rem 0.65rem;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.92);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+		font-family: var(--serif);
+		font-size: clamp(0.95rem, 2.4vw, 1.15rem);
+		line-height: 1.25;
+		color: var(--text);
+	}
+
+	.trip-map[data-style='old-world'] .trip-map-canvas :global(.trip-map-label) {
+		background: rgba(240, 228, 200, 0.92);
+		color: #5a3d22;
+		font-style: italic;
 	}
 
 	/* Old-world finish: paper grain, a vignette and a compass rose over the map. */

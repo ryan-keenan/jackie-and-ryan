@@ -6,7 +6,7 @@ import Base from '../../../../layouts/Base.astro';
 import { parseBody, splitOpening } from '../../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin, getVideosForPost } from '../../../../lib/db';
 import { formatTripDates } from '../../../../lib/format';
-import { mapView } from '../../../../lib/map';
+import { mapView, pinLabel } from '../../../../lib/map';
 
 // The post as readers will see it, including drafts and private posts, with
 // images served through the admin route. Shows the last saved version.
@@ -17,7 +17,7 @@ const videos = await getVideosForPost(post.id);
 const blocks = parseBody(post.body, photos.map((photo) => photo.id), videos.map((video) => video.id));
 const { opening, rest } = splitOpening(blocks);
 const dates = formatTripDates(post.trip_start, post.trip_end);
-const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.place_lon });
+const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.place_lon, label: pinLabel(post.map_pin, post.location) });
 ---
 
 <Base title={`Preview: ${post.title}`} description={post.summary}>

@@ -28,8 +28,6 @@ const SENTINEL_ATTRIBUTION =
 const TERRAIN_ATTRIBUTION = 'Elevation: Mapzen Terrain Tiles on AWS';
 const PIN = '#b8935f';
 
-/** Farthest a 'fit' map zooms in: about 20 km across, so one pin still shows its surroundings. */
-const FIT_MAX_ZOOM = 11;
 /** How far the 3D style tilts the camera, in degrees from straight down. */
 const TERRAIN_PITCH = 60;
 const GLOBE_ZOOM = 1.6;
@@ -220,15 +218,15 @@ const STYLES: Record<MapStyle, () => Promise<StyleSpecification> | StyleSpecific
 };
 
 export interface TripMap {
-	/** Redraws the map in another style and zoom setting, for the admin preview. */
-	update(mode: Exclude<MapMode, 'off'>, style: MapStyle): Promise<void>;
+	/** Redraws the map in another style and zoom setting, and moves the pin if given a new view, for the admin preview. */
+	update(mode: Exclude<MapMode, 'off'>, style: MapStyle, view?: MapView): Promise<void>;
 }
 
 export async function drawTripMap(container: HTMLElement, view: MapView, style: MapStyle): Promise<TripMap> {
 	const map = new Map({
 		container,
 		style: await STYLES[style](),
-		center: view.center,
+		center: view.pin,
 		zoom: 4,
 		maxPitch: 85,
 		// Page scrolling stays normal; two fingers (or Ctrl/Cmd + scroll) move the map.
@@ -236,30 +234,42 @@ export async function drawTripMap(container: HTMLElement, view: MapView, style: 
 	});
 	map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
 
-	for (const point of view.points) {
-		const dot = document.createElement('div');
-		dot.className = 'trip-map-pin';
-		// In 3D a ridge can stand between the camera and a pin; keep the pin visible anyway.
-		new Marker({ element: dot, opacityWhenCovered: '1' }).setLngLat(point).addTo(map);
-	}
+	// The label hangs off the dot without changing its size, so the dot stays
+	// centered on the place.
+	const dot = document.createElement('div');
+	dot.className = 'trip-map-pin';
+	const label = document.createElement('span');
+	label.className = 'trip-map-label';
+	dot.appendChild(label);
+	// In 3D a ridge can stand between the camera and a pin; keep the pin visible anyway.
+	const marker = new Marker({ element: dot, opacityWhenCovered: '1' }).setLngLat(view.pin).addTo(map);
 	container.style.setProperty('--pin', PIN);
+	let current = view;
+	function placePin() {
+		marker.setLngLat(current.pin);
+		label.textContent = current.label;
+		label.hidden = !current.label;
+	}
+	placePin();
 
-	function placeCamera(mode: Exclude<MapMode, 'off'>, current: MapStyle) {
-		const pitch = current === 'terrain-3d' ? TERRAIN_PITCH : 0;
-		if (current === 'globe') {
+	function placeCamera(mode: Exclude<MapMode, 'off'>, styleName: MapStyle) {
+		const pitch = styleName === 'terrain-3d' ? TERRAIN_PITCH : 0;
+		if (styleName === 'globe') {
 			// The whole planet, tilted so the pin sits a little above center.
-			map.jumpTo({ center: [view.center[0], Math.max(-60, Math.min(60, view.center[1] - 15))], zoom: GLOBE_ZOOM, pitch: 0, bearing: 0 });
-		} else if (mode === 'fit') {
-			map.fitBounds(view.bounds, { padding: 60, maxZoom: FIT_MAX_ZOOM + (pitch ? 1.5 : 0), pitch, bearing: 0, duration: 0 });
+			map.jumpTo({ center: [current.pin[0], Math.max(-60, Math.min(60, current.pin[1] - 15))], zoom: GLOBE_ZOOM, pitch: 0, bearing: 0 });
 		} else {
-			map.jumpTo({ center: view.center, zoom: ZOOM[mode] + (pitch ? 1.5 : 0), pitch, bearing: 0 });
+			map.jumpTo({ center: current.pin, zoom: ZOOM[mode] + (pitch ? 1 : 0), pitch, bearing: 0 });
 		}
 	}
 
 	placeCamera(view.mode, style);
 	let shown = style;
 	return {
-		async update(mode, next) {
+		async update(mode, next, view) {
+			if (view) {
+				current = view;
+				placePin();
+			}
 			if (next !== shown) {
 				map.setStyle(await STYLES[next](), { diff: false });
 				shown = next;

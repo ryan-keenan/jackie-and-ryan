@@ -14,6 +14,7 @@ import { AI_MAX_PX } from '../photo-meta';
 import { thumbnailUrl } from '../stream';
 import { DraftFailed, generateDraft, isRetryable, readDraftConfig } from './draft';
 import { isRetryableResearchError, readResearchConfig, ResearchFailed, runResearch } from './research';
+import { suggestAndSavePlace } from '../post-place';
 
 // Runs one drafting or research job from the queue. Called by the queue
 // consumer in src/worker.ts, which retries the message when this returns 'retry'.
@@ -96,8 +97,22 @@ export async function runDraftJob(jobId: string, attempt: number): Promise<'done
 			captions: result.draft.captions,
 			videoCaptions: result.draft.videoCaptions,
 		});
+		// A new post gets its map pin from the draft. The draft is already saved, so a
+		// failure here doesn't fail the job; it is reported on the job instead.
+		let placeNote: string | null = null;
+		if (!post.map_pin.trim()) {
+			try {
+				await suggestAndSavePlace(post.id);
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				console.error(`Drafting job ${jobId}: finding the map place failed: ${text}`);
+				placeNote = `The draft was saved, but finding the place for the map failed: ${text} Use Find the place to try again.`;
+			}
+		}
+
 		await updateJob(jobId, {
 			status: 'succeeded',
+			error: placeNote,
 			model: result.model,
 			input_tokens: result.inputTokens,
 			output_tokens: result.outputTokens,

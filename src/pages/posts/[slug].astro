@@ -6,7 +6,7 @@ import Base from '../../layouts/Base.astro';
 import { parseBody, splitOpening } from '../../lib/blocks';
 import { getPhotosForPost, getPublishedPost, getVideosForPost } from '../../lib/db';
 import { formatTripDates } from '../../lib/format';
-import { mapView } from '../../lib/map';
+import { mapView, pinLabel } from '../../lib/map';
 
 const post = await getPublishedPost(Astro.params.slug!, 'public');
 if (!post) return new Response('Not found', { status: 404 });
@@ -16,7 +16,7 @@ const videos = await getVideosForPost(post.id);
 const blocks = parseBody(post.body, photos.map((photo) => photo.id), videos.map((video) => video.id));
 const { opening, rest } = splitOpening(blocks);
 const dates = formatTripDates(post.trip_start, post.trip_end);
-const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.place_lon });
+const map = mapView(post.map_mode, photos, { lat: post.place_lat, lon: post.place_lon, label: pinLabel(post.map_pin, post.location) });
 
 // Browsers re-check every visit, so edits and unpublishing show up immediately.
 Astro.response.headers.set('cache-control', 'no-cache');

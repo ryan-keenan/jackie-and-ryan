@@ -4,7 +4,7 @@ import { parseBody, type Block } from '../../../lib/blocks';
 import { getPhotosForAdmin, getPostForAdmin, getVideosForPost, latestJobForPost, type VideoRow } from '../../../lib/db';
 import { formatDuration, formatTakenAt } from '../../../lib/format';
 import { thumbnailUrl } from '../../../lib/stream';
-import { locatedCount, MAP_MODE_LABELS, MAP_MODES, MAP_STYLE_LABELS, MAP_STYLES, mapSourceHint, mapView } from '../../../lib/map';
+import { locatedCount, MAP_MODE_LABELS, MAP_MODES, MAP_STYLE_LABELS, MAP_STYLES, mapSourceHint, mapView, pinLabel } from '../../../lib/map';
 import TripMap from '../../../components/TripMap.astro';
 import ResearchPanel from '../../../components/ResearchPanel.astro';
 import { parseResearch, type Research } from '../../../lib/research';
@@ -24,7 +24,7 @@ try {
 	researchError = (error as Error).message;
 }
 // The preview is built at 'fit' even when the map is off, so switching it on shows it right away.
-const mapPreview = mapView('fit', photos, { lat: post.place_lat, lon: post.place_lon });
+const mapPreview = mapView('fit', photos, { lat: post.place_lat, lon: post.place_lon, label: pinLabel(post.map_pin, post.location) });
 
 const videoThumb = (video: VideoRow) =>
 	video.status === 'ready' && video.playback_host ? thumbnailUrl(video.playback_host, video.stream_uid, 480) : null;
@@ -77,7 +77,8 @@ function jobText(): string {
 	}
 	if (job.status === 'failed') return `The last draft failed: ${job.error}`;
 	const tokens = job.input_tokens !== null ? ` · ${job.input_tokens.toLocaleString()} in / ${job.output_tokens?.toLocaleString()} out tokens` : '';
-	return `Last drafted by ${job.model}${tokens}`;
+	// A succeeded draft can still carry a note, such as the map place not being found.
+	return `Last drafted by ${job.model}${tokens}${job.error ? `. ${job.error}` : ''}`;
 }
 ---
 
@@ -119,7 +120,15 @@ function jobText(): string {
 					<select id="map_mode" name="map_mode" data-map-setting>
 						{MAP_MODES.map((mode) => <option value={mode} selected={post.map_mode === mode}>{MAP_MODE_LABELS[mode]}</option>)}
 					</select>
-					<p class="field-hint" data-map-hint data-located={locatedCount(photos)}>{mapSourceHint(locatedCount(photos), photos.length, post.place_name)}</p>
+				</div>
+				<div class="span-2">
+					<label for="map_pin">Map pin</label>
+					<div class="pin-picker">
+						<input id="map_pin" name="map_pin" type="text" maxlength="200" value={post.map_pin} placeholder={post.location ? `Empty: uses Where (${post.location})` : 'e.g. Black Velvet Canyon, Nevada, USA'} />
+						<button type="button" class="button secondary" id="find-place">Find the place</button>
+					</div>
+					<p class="field-hint" data-pin-reason hidden></p>
+					<p class="field-hint" data-map-hint data-located={locatedCount(photos)}>{mapSourceHint(post.place_name, locatedCount(photos))}</p>
 				</div>
 				<div class="span-2">
 					<label for="map_style">Map style</label>
@@ -244,7 +253,7 @@ function jobText(): string {
 			</p>
 			<div class="draft-bar">
 				<button class="button" type="button" id="generate">{blocks.length ? 'Regenerate draft' : 'Generate draft'}</button>
-				<span class:list={['draft-status', job?.status === 'failed' && 'status-error']} role="status" aria-live="polite">{jobText()}</span>
+				<span class:list={['draft-status', (job?.status === 'failed' || (job?.status === 'succeeded' && job.error)) && 'status-error']} role="status" aria-live="polite">{jobText()}</span>
 			</div>
 			{bodyError && <p class="status-error">The saved post can't be shown in the editor: {bodyError}</p>}
 
@@ -280,7 +289,7 @@ function jobText(): string {
 	import { BlockEditor, type CaptionTarget, type EditorPhoto, type EditorVideo } from '../../../scripts/block-editor';
 	import { uploadVideo, type VideoState } from '../../../scripts/video-upload';
 	import { formatDuration } from '../../../lib/format';
-	import { mapSourceHint } from '../../../lib/map';
+	import { mapSourceHint, type MapView } from '../../../lib/map';
 	import { thumbnailUrl } from '../../../lib/stream';
 
 	const workspace = document.querySelector<HTMLElement>('.workspace')!;
@@ -322,6 +331,7 @@ function jobText(): string {
 			visibility: value('visibility'),
 			map_mode: value('map_mode'),
 			map_style: value('map_style'),
+			map_pin: value('map_pin').trim(),
 			author_notes: value('author_notes'),
 		};
 	}
@@ -331,20 +341,59 @@ function jobText(): string {
 		const details = detailsFromForm();
 		setStatus(saveStatus, 'Saving…', true);
 		try {
-			const result = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', details)) as { place?: { name: string } | null };
+			const result = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', details)) as PlaceUpdate;
 			document.querySelector('[data-title-display]')!.textContent = details.title;
-			// A changed Location was looked up again; show what it matched.
-			if (result.place !== undefined) {
-				const hint = document.querySelector<HTMLElement>('[data-map-hint]')!;
-				hint.textContent = mapSourceHint(Number(hint.dataset.located), grid.children.length, result.place?.name ?? '');
-			}
+			// A changed map pin or Location was looked up again; show what it matched.
+			if (result.place !== undefined) showPlace(result.place?.name ?? '', result.view ?? null);
 			setStatus(saveStatus, 'Saved', true);
 		} catch (error) {
 			setStatus(saveStatus, (error as Error).message, false);
 		}
 	});
 
-	// ---- Map preview ----
+	// ---- Map pin and preview ----
+
+	type PlaceUpdate = { place?: { name: string } | null; view?: MapView | null };
+	const pinInput = document.getElementById('map_pin') as HTMLInputElement;
+	const pinReason = document.querySelector<HTMLElement>('[data-pin-reason]')!;
+	const findButton = document.querySelector<HTMLButtonElement>('#find-place')!;
+
+	/** Shows the matched place and moves the preview pin; the page has no preview until a post first has a place, so it reloads then. */
+	function showPlace(placeName: string, view: MapView | null) {
+		const hint = document.querySelector<HTMLElement>('[data-map-hint]')!;
+		hint.textContent = mapSourceHint(placeName, Number(hint.dataset.located));
+		if (!view) return;
+		if (!mapFigure) {
+			location.reload();
+			return;
+		}
+		mapFigure.dispatchEvent(new CustomEvent('trip-map:update', { detail: { mode: modeSelect.value, style: styleSelect.value, view } }));
+	}
+
+	// Saves the details first, so the AI reads the notes as they are on the page.
+	findButton.addEventListener('click', async () => {
+		findButton.disabled = true;
+		pinReason.hidden = false;
+		setStatus(pinReason, 'Saving details, then reading the post to find its place…', true);
+		try {
+			const saved = (await sendJson(`/api/admin/posts/${postId}`, 'PATCH', detailsFromForm())) as PlaceUpdate;
+			if (saved.place !== undefined) showPlace(saved.place?.name ?? '', null);
+			const found = (await sendJson(`/api/admin/posts/${postId}/place`, 'POST')) as {
+				pin: string;
+				confident: boolean;
+				reason: string;
+				placeName: string;
+				view: MapView | null;
+			};
+			pinInput.value = found.pin;
+			setStatus(pinReason, found.confident ? found.reason : `Not sure: ${found.reason} Edit the map pin if it's wrong.`, found.confident);
+			showPlace(found.placeName, found.view);
+		} catch (error) {
+			setStatus(pinReason, (error as Error).message, false);
+		} finally {
+			findButton.disabled = false;
+		}
+	});
 
 	const mapFigure = document.querySelector<HTMLElement>('.map-preview .trip-map');
 	// Typed structurally: in this project HTMLSelectElement clashes with the
@@ -827,9 +876,19 @@ function jobText(): string {
 		grid-column: span 2;
 	}
 
-	.style-picker {
+	.style-picker,
+	.pin-picker {
 		display: flex;
 		gap: 0.4rem;
+	}
+
+	.pin-picker input {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.pin-picker button {
+		white-space: nowrap;
 	}
 
 	.style-picker select {

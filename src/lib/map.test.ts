@@ -1,47 +1,35 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { locatedCount, MAP_STYLE_LABELS, MAP_STYLES, mapView } from './map';
+import { locatedCount, MAP_STYLE_LABELS, MAP_STYLES, mapView, pinLabel } from './map';
 
 const taipei = { lat: 25.033964, lon: 121.564468 };
-const nearby = { lat: 25.031101, lon: 121.56012 }; // ~500 m away, in the same rounded ~1 km cell
 const longdong = { lat: 25.1103, lon: 121.9221 };
 const noGps = { lat: null, lon: null };
-const noPlace = noGps;
+const noPlace = { ...noGps, label: '' };
+const blackVelvet = { lat: 36.0341460, lon: -115.4483425, label: 'Black Velvet Canyon' };
 
 describe('mapView', () => {
-	it('returns nothing when the map is off or neither the photos nor the place has a position', () => {
-		expect(mapView('off', [taipei], noPlace)).toBeNull();
+	it('returns nothing when the map is off or there is neither a place nor a photo position', () => {
+		expect(mapView('off', [taipei], blackVelvet)).toBeNull();
 		expect(mapView('country', [noGps, noGps], noPlace)).toBeNull();
 	});
 
-	it('rounds positions to about 1 km and drops duplicates', () => {
-		const view = mapView('city', [taipei, nearby, noGps, longdong], noPlace)!;
-		expect(view.points).toEqual([
-			[121.56, 25.03],
-			[121.92, 25.11],
-		]);
+	it('puts one labeled pin on the place, rounded to about 1 km, even when photos have positions', () => {
+		const view = mapView('fit', [taipei, longdong], blackVelvet)!;
+		expect(view).toEqual({ mode: 'fit', source: 'place', pin: [-115.45, 36.03], label: 'Black Velvet Canyon', zoom: 9.3 });
 	});
 
-	it('centers on the middle of the photos and sets the zoom for fixed modes', () => {
-		const view = mapView('country', [taipei, longdong], noPlace)!;
-		expect(view.center).toEqual([121.74, 25.07]);
-		expect(view.zoom).toBe(4.2);
-		expect(view.bounds).toEqual([121.56, 25.03, 121.92, 25.11]);
-	});
-
-	it('leaves zoom to the bounds in fit mode', () => {
-		expect(mapView('fit', [taipei, longdong], noPlace)!.zoom).toBeNull();
+	it('without a place, puts an unlabeled pin in the middle of the photos', () => {
+		const view = mapView('country', [taipei, noGps, longdong], noPlace)!;
+		expect(view).toEqual({ mode: 'country', source: 'photos', pin: [121.74, 25.07], label: '', zoom: 4.2 });
 	});
 });
 
-describe('mapView with the post\'s place', () => {
-	it('uses the place only when no photo has a position', () => {
-		const place = { lat: 39.3415556, lon: -120.3399113 };
-		const view = mapView('fit', [noGps], place)!;
-		expect(view.source).toBe('place');
-		expect(view.points).toEqual([[-120.34, 39.34]]);
-		expect(mapView('fit', [taipei], place)!.source).toBe('photos');
-		expect(mapView('off', [noGps], place)).toBeNull();
+describe('pinLabel', () => {
+	it('is the map pin text, or else the Location, up to the first comma', () => {
+		expect(pinLabel('Black Velvet Canyon, Nevada, USA', 'Red Rocks')).toBe('Black Velvet Canyon');
+		expect(pinLabel('  ', 'Squamish, British Columbia')).toBe('Squamish');
+		expect(pinLabel('', '')).toBe('');
 	});
 });
 
