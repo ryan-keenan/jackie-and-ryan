@@ -45,8 +45,13 @@ describe('withDefaultMap', () => {
 	const photo: Block = { type: 'photo', photoId: 'a' };
 	const text: Block = { type: 'paragraph', markdown: 'Hello' };
 
-	it('puts the map after an opening photo, or first when the post opens with text', () => {
-		expect(withDefaultMap([photo, text])).toEqual([photo, { type: 'map' }, text]);
+	it('puts the map after the paragraph that follows the opening photo', () => {
+		expect(withDefaultMap([photo, text, photo, text])).toEqual([photo, text, { type: 'map' }, photo, text]);
+	});
+
+	it('puts the map after an opening photo with no paragraph next, or first when the post opens with text', () => {
+		expect(withDefaultMap([photo, photo, text])).toEqual([photo, { type: 'map' }, photo, text]);
+		expect(withDefaultMap([photo])).toEqual([photo, { type: 'map' }]);
 		expect(withDefaultMap([text, photo])).toEqual([{ type: 'map' }, text, photo]);
 	});
 

@@ -56,6 +56,8 @@ Captions:
 
 How to use the photos:
 - Start the post with a photo block, before any text, so readers see a photo right under the title and summary. Open with the photo that best sets the scene; it can be the cover.
+- After the opening photo, alternate text and pictures: a paragraph, then a photo, gallery or video, then a paragraph, and so on. Put at least one paragraph between any two photo, gallery or video blocks, and end the post with a paragraph.
+- The first paragraph after the opening photo sets the scene: where they were and why they went. A map of the place is added right after it, so that paragraph leads into the map.
 - Choose the photos that best tell the story. Leave out near-duplicates, blurry shots and photos that add nothing; it is fine not to use every photo.
 - Give a standout photo its own photo block. Put related photos (the same meal, the same viewpoint, a series of moments) together in a gallery of 2 to 6.
 - Place each photo next to the text it belongs with, and use each photo at most once.

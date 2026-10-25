@@ -64,13 +64,15 @@ export function parseBody(json: string, postPhotoIds: Iterable<string>, postVide
 }
 
 /**
- * The body with a map block in its default place, right after the photo or
- * gallery that opens the post (or first, when the post opens with text). Bodies
- * that already have a map, and empty bodies, are returned unchanged. Keep this in
- * step with migrations/0010_map_block.sql, which did the same to existing posts.
+ * The body with a map block in its default place. Drafts open with a photo (or
+ * gallery) and then a scene-setting paragraph, and the map goes after that
+ * paragraph. A post that opens with a photo but no paragraph after it gets the
+ * map right after the photo, and one that opens with text gets it first. Bodies
+ * that already have a map, and empty bodies, are returned unchanged.
  */
 export function withDefaultMap(body: Block[]): Block[] {
 	if (body.length === 0 || body.some((block) => block.type === 'map')) return body;
-	const at = body[0].type === 'photo' || body[0].type === 'gallery' ? 1 : 0;
+	const opensWithPicture = body[0].type === 'photo' || body[0].type === 'gallery';
+	const at = !opensWithPicture ? 0 : body[1]?.type === 'paragraph' ? 2 : 1;
 	return [...body.slice(0, at), { type: 'map' }, ...body.slice(at)];
 }
